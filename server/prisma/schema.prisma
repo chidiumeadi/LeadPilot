@@ -1,0 +1,14 @@
+// LeadPilot — Prisma schema
+// Phase 0: connection/config foundation only.
+// Application models (businesses, users, leads, follow_ups, lead_activities,
+// notifications) are introduced in their respective later phases per the
+// LeadPilot MVP Technical Specification v1.0.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

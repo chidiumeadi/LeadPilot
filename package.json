@@ -1,0 +1,16 @@
+{
+  "name": "leadpilot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LeadPilot — B2B lead management and follow-up automation platform for small businesses.",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "build:client": "npm run build --prefix client",
+    "build:server": "npm run build --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
