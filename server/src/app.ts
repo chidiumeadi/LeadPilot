@@ -8,6 +8,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler'
 import authRoutes from './routes/auth'
 import businessRoutes from './routes/business'
 import healthRoutes from './routes/health'
+import leadRoutes from './routes/leads'
 
 const app = express()
 
@@ -18,7 +19,8 @@ app.use(cookieParser())
 app.use('/api', healthRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/business', businessRoutes)
-// Later phases mount /api/leads, /api/follow-ups, etc. here.
+app.use('/api/leads', leadRoutes)
+// Later phases mount /api/follow-ups, /api/notifications, etc. here.
 
 app.use(notFoundHandler)
 app.use(errorHandler)

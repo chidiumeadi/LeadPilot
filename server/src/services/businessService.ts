@@ -35,6 +35,19 @@ export async function generateUniqueSlug(
   return candidate
 }
 
+export async function getBusinessIdForUser(userId: string): Promise<string> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { businessId: true },
+  })
+
+  if (!user) {
+    throw new AppError('Unauthorized', 401)
+  }
+
+  return user.businessId
+}
+
 export async function getBusinessForUser(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
