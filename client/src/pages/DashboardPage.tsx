@@ -1,31 +1,65 @@
-import { useNavigate } from 'react-router-dom'
+import { Bell, Calendar, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
+import EmptyState from '../components/dashboard/EmptyState'
 import { useAuth } from '../context/AuthContext'
 
-// Phase 1: a minimal shell that proves authenticated routing works.
-// Dashboard statistics and lead management belong to later phases.
-export default function DashboardPage() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+const quickLinks = [
+  {
+    label: 'Leads',
+    path: '/leads',
+    icon: Users,
+    description: 'Capture and manage leads from every channel in one place.',
+  },
+  {
+    label: 'Follow-ups',
+    path: '/follow-ups',
+    icon: Calendar,
+    description: 'Stay on top of every follow-up so no lead gets forgotten.',
+  },
+  {
+    label: 'Notifications',
+    path: '/notifications',
+    icon: Bell,
+    description: 'Get notified the moment something needs your attention.',
+  },
+]
 
-  const handleLogout = async () => {
-    await logout()
-    navigate('/login', { replace: true })
-  }
+// Phase 2: dashboard shell only. Real lead/follow-up data and statistics
+// are wired up in later phases.
+export default function DashboardPage() {
+  const { user } = useAuth()
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
-        <span className="text-lg font-semibold text-gray-900">LeadPilot</span>
-        <button onClick={handleLogout} className="text-sm font-medium text-gray-500 hover:text-gray-900">
-          Log out
-        </button>
-      </header>
+    <div>
+      <h2 className="text-xl font-semibold text-gray-900">Welcome, {user?.name}</h2>
+      <p className="mt-1 text-sm text-gray-500">{user?.business.name}</p>
+      <p className="mt-4 max-w-2xl text-sm text-gray-500">
+        LeadPilot will help {user?.business.name} capture, organize, and follow up on leads from every
+        channel so no potential customer gets forgotten. The sections below will come to life over the
+        next phases.
+      </p>
 
-      <main className="mx-auto max-w-2xl px-6 py-12">
-        <h1 className="text-2xl font-semibold text-gray-900">Welcome, {user?.name}</h1>
-        <p className="mt-2 text-gray-500">{user?.business.name}</p>
-      </main>
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {quickLinks.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className="rounded-lg border border-gray-200 bg-white p-5 transition-colors hover:border-gray-300 hover:bg-gray-50"
+          >
+            <item.icon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+            <h3 className="mt-3 text-sm font-medium text-gray-900">{item.label}</h3>
+            <p className="mt-1 text-sm text-gray-500">{item.description}</p>
+          </Link>
+        ))}
+      </div>
+
+      <div className="mt-8">
+        <EmptyState
+          title="No activity yet"
+          description="Once you start capturing leads, recent activity will show up here."
+        />
+      </div>
     </div>
   )
 }
