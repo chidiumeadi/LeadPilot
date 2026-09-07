@@ -5,10 +5,10 @@ and follow up on leads coming from channels like WhatsApp, Instagram,
 Facebook, phone calls, referrals, and their website — so no potential
 customer gets forgotten.
 
-> **Status:** Phase 2 — Dashboard Shell. Leads, follow-ups,
-> notifications, and all other product functionality are implemented
-> in later development phases and do not exist yet — the sidebar
-> links for them are placeholders.
+> **Status:** Phase 3 — Lead Management. Follow-ups, notifications,
+> analytics, and public lead capture are implemented in later
+> development phases and do not exist yet — the sidebar links for
+> them are placeholders.
 
 ## Tech Stack
 
@@ -35,11 +35,12 @@ customer gets forgotten.
 leadpilot/
 ├── client/          # React + TypeScript frontend (Vite)
 │   └── src/
-│       ├── components/ # AuthCard, FormField, route guards, etc.
-│       ├── config/     # env variable access
+│       ├── components/ # AuthCard, FormField, dashboard shell, leads/, etc.
+│       ├── config/     # env variable access, navigation, lead status
 │       ├── context/    # AuthContext (auth state)
-│       ├── pages/      # route-level components
-│       ├── services/   # API client (Axios) + auth API calls
+│       ├── hooks/       # small reusable hooks (debounce, etc.)
+│       ├── pages/      # route-level components (incl. pages/leads/)
+│       ├── services/   # API client (Axios) + auth/lead API calls
 │       ├── types/       # shared frontend types
 │       └── utils/       # small helpers (API error extraction)
 ├── server/          # Node + Express + TypeScript backend
@@ -48,12 +49,12 @@ leadpilot/
 │   │   ├── controllers/  # request handlers
 │   │   ├── middleware/   # auth, rate limiting, error handling
 │   │   ├── routes/       # Express routers
-│   │   ├── services/     # business logic (auth, business, tokens)
+│   │   ├── services/     # business logic (auth, business, leads, tokens)
 │   │   ├── utils/        # shared helpers (validation, slugify)
 │   │   ├── validators/   # Zod request schemas
 │   │   └── app.ts        # Express app entry point
 │   └── prisma/
-│       ├── schema.prisma     # businesses, users, password_reset_tokens
+│       ├── schema.prisma     # businesses, users, password_reset_tokens, leads
 │       └── migrations/
 ├── README.md
 ├── .gitignore
@@ -124,9 +125,15 @@ log out, and use the forgot-password / reset-password flow. See
 | POST   | `/api/auth/reset-password` | No             | Reset password with a valid token      |
 | GET    | `/api/business`            | Yes            | Get the authenticated user's business  |
 | PATCH  | `/api/business`            | Yes            | Update the authenticated user's business|
+| GET    | `/api/leads`                | Yes            | List the business's leads (pagination, search, status filter) |
+| POST   | `/api/leads`                | Yes            | Create a lead (source is always `MANUAL` here) |
+| GET    | `/api/leads/:id`            | Yes            | Get one lead (404 if it belongs to another business) |
+| PATCH  | `/api/leads/:id`            | Yes            | Update a lead (business ownership can't be changed) |
+| DELETE | `/api/leads/:id`            | Yes            | Delete a lead |
 
 Authentication uses a JWT stored in an `HttpOnly` cookie — the frontend
-never touches the token directly.
+never touches the token directly. Every `/api/leads` query is scoped
+to the authenticated user's business at the database level.
 
 ## Environment Variables
 
