@@ -14,7 +14,9 @@ export default function AuthenticatedLayout() {
   const location = useLocation()
 
   const pageTitle = useMemo(() => {
-    const match = allNavItems.find((item) => item.path === location.pathname)
+    const match = allNavItems.find(
+      (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
+    )
     return match?.label ?? 'Dashboard'
   }, [location.pathname])
 

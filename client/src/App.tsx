@@ -1,4 +1,4 @@
-import { Bell, Calendar, Settings, Users } from 'lucide-react'
+import { Bell, Calendar, Settings } from 'lucide-react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import AuthenticatedLayout from './components/dashboard/AuthenticatedLayout'
@@ -7,13 +7,18 @@ import PublicOnlyRoute from './components/PublicOnlyRoute'
 import { AuthProvider } from './context/AuthContext'
 import DashboardPage from './pages/DashboardPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import EditLeadPage from './pages/leads/EditLeadPage'
+import LeadDetailsPage from './pages/leads/LeadDetailsPage'
+import LeadsListPage from './pages/leads/LeadsListPage'
+import NewLeadPage from './pages/leads/NewLeadPage'
 import LoginPage from './pages/LoginPage'
 import PlaceholderPage from './pages/PlaceholderPage'
 import RegisterPage from './pages/RegisterPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 
-// Phase 2: authenticated dashboard shell (layout, navigation, placeholders).
-// Lead management, follow-ups, and notifications are built in later phases.
+// Phase 2 established the dashboard shell (layout, navigation, placeholders).
+// Phase 3 adds real Lead Management under /leads.
+// Follow-ups and notifications are built in later phases.
 function App() {
   return (
     <BrowserRouter>
@@ -32,16 +37,10 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AuthenticatedLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route
-                path="/leads"
-                element={
-                  <PlaceholderPage
-                    title="Leads"
-                    description="Lead management is coming in the next phase."
-                    icon={Users}
-                  />
-                }
-              />
+              <Route path="/leads" element={<LeadsListPage />} />
+              <Route path="/leads/new" element={<NewLeadPage />} />
+              <Route path="/leads/:id" element={<LeadDetailsPage />} />
+              <Route path="/leads/:id/edit" element={<EditLeadPage />} />
               <Route
                 path="/follow-ups"
                 element={
