@@ -5,9 +5,10 @@ and follow up on leads coming from channels like WhatsApp, Instagram,
 Facebook, phone calls, referrals, and their website — so no potential
 customer gets forgotten.
 
-> **Status:** Phase 1 — Authentication & Business Accounts. Leads,
-> follow-ups, notifications, and all other product functionality are
-> implemented in later development phases and do not exist yet.
+> **Status:** Phase 2 — Dashboard Shell. Leads, follow-ups,
+> notifications, and all other product functionality are implemented
+> in later development phases and do not exist yet — the sidebar
+> links for them are placeholders.
 
 ## Tech Stack
 
