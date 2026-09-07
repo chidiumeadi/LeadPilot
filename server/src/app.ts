@@ -9,6 +9,7 @@ import authRoutes from './routes/auth'
 import businessRoutes from './routes/business'
 import healthRoutes from './routes/health'
 import leadRoutes from './routes/leads'
+import publicRoutes from './routes/public'
 
 const app = express()
 
@@ -20,6 +21,7 @@ app.use('/api', healthRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/business', businessRoutes)
 app.use('/api/leads', leadRoutes)
+app.use('/api/public', publicRoutes)
 // Later phases mount /api/follow-ups, /api/notifications, etc. here.
 
 app.use(notFoundHandler)
