@@ -1,19 +1,24 @@
+import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
 
 import { corsOptions } from './config/cors'
 import { env } from './config/env'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler'
+import authRoutes from './routes/auth'
+import businessRoutes from './routes/business'
 import healthRoutes from './routes/health'
 
 const app = express()
 
 app.use(cors(corsOptions))
 app.use(express.json())
+app.use(cookieParser())
 
-// Phase 0: only the health route exists.
-// Later phases mount /api/auth, /api/business, /api/leads, etc. here.
 app.use('/api', healthRoutes)
+app.use('/api/auth', authRoutes)
+app.use('/api/business', businessRoutes)
+// Later phases mount /api/leads, /api/follow-ups, etc. here.
 
 app.use(notFoundHandler)
 app.use(errorHandler)
