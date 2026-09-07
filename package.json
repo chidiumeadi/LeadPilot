@@ -11,6 +11,11 @@
     "build:server": "npm run build --prefix server"
   },
   "devDependencies": {
+    "@types/pg": "^8.23.1",
     "concurrently": "^9.1.2"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "pg": "^8.23.0"
   }
 }
