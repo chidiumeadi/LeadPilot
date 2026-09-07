@@ -1,8 +1,9 @@
 // LeadPilot — Prisma schema
 // Phase 1: authentication & business-account foundation (businesses, users,
-// password reset tokens). Leads, follow_ups, lead_activities, and
-// notifications are introduced in their respective later phases per the
-// LeadPilot MVP Technical Specification v1.0.
+// password reset tokens).
+// Phase 3: lead management (leads).
+// follow_ups, lead_activities, and notifications are introduced in their
+// respective later phases per the LeadPilot MVP Technical Specification v1.0.
 
 generator client {
   provider = "prisma-client-js"
@@ -24,6 +25,7 @@ model Business {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   users User[]
+  leads Lead[]
 
   @@map("businesses")
 }
@@ -56,4 +58,33 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+model Lead {
+  id         String     @id @default(uuid())
+  businessId String     @map("business_id")
+  name       String
+  email      String?
+  phone      String?
+  // Free-form (not an enum) so later phases can introduce new sources
+  // (e.g. public form capture) without a schema migration.
+  source     String     @default("MANUAL")
+  status     LeadStatus @default(NEW)
+  notes      String?
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, status])
+  @@map("leads")
 }
