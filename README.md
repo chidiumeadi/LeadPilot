@@ -5,7 +5,7 @@ and follow up on leads coming from channels like WhatsApp, Instagram,
 Facebook, phone calls, referrals, and their website — so no potential
 customer gets forgotten.
 
-> **Status:** Phase 0 — Project Foundation. Authentication, leads,
+> **Status:** Phase 1 — Authentication & Business Accounts. Leads,
 > follow-ups, notifications, and all other product functionality are
 > implemented in later development phases and do not exist yet.
 
@@ -34,20 +34,26 @@ customer gets forgotten.
 leadpilot/
 ├── client/          # React + TypeScript frontend (Vite)
 │   └── src/
-│       ├── config/    # env variable access
+│       ├── components/ # AuthCard, FormField, route guards, etc.
+│       ├── config/     # env variable access
+│       ├── context/    # AuthContext (auth state)
 │       ├── pages/      # route-level components
-│       └── services/   # API client (Axios)
+│       ├── services/   # API client (Axios) + auth API calls
+│       ├── types/       # shared frontend types
+│       └── utils/       # small helpers (API error extraction)
 ├── server/          # Node + Express + TypeScript backend
 │   ├── src/
-│   │   ├── config/       # env, Prisma client, CORS config
+│   │   ├── config/       # env, Prisma client, CORS, cookie config
 │   │   ├── controllers/  # request handlers
-│   │   ├── middleware/   # error handling, etc.
+│   │   ├── middleware/   # auth, rate limiting, error handling
 │   │   ├── routes/       # Express routers
-│   │   ├── services/     # business logic (added in later phases)
-│   │   ├── utils/        # shared helpers (added in later phases)
+│   │   ├── services/     # business logic (auth, business, tokens)
+│   │   ├── utils/        # shared helpers (validation, slugify)
+│   │   ├── validators/   # Zod request schemas
 │   │   └── app.ts        # Express app entry point
 │   └── prisma/
-│       └── schema.prisma # PostgreSQL connection (no app models yet)
+│       ├── schema.prisma     # businesses, users, password_reset_tokens
+│       └── migrations/
 ├── README.md
 ├── .gitignore
 └── package.json     # root convenience scripts
@@ -77,14 +83,12 @@ See [Environment Variables](#environment-variables) below for what each one mean
 ### 3. Set up the database
 
 You need a running PostgreSQL instance and `DATABASE_URL` pointed at it.
-Then generate the Prisma client:
+Then generate the Prisma client and apply migrations:
 
 ```bash
 npm run prisma:generate --prefix server
+npm run prisma:migrate --prefix server
 ```
-
-(No schema migration is needed yet — Phase 0 only establishes the
-connection. Application tables are added in later phases.)
 
 ### 4. Run the app
 
@@ -102,8 +106,26 @@ npm run dev:server   # http://localhost:5000
 npm run dev:client   # http://localhost:3000
 ```
 
-The frontend's foundation page calls `GET /api/health` on load and
-shows whether it successfully reached the backend.
+Visiting the frontend redirects to `/login`. From there you can
+register a new account (which also creates your business), log in,
+log out, and use the forgot-password / reset-password flow. See
+[API Endpoints](#api-endpoints) below.
+
+## API Endpoints
+
+| Method | Path                       | Auth required | Purpose                              |
+|--------|----------------------------|:--------------:|---------------------------------------|
+| POST   | `/api/auth/register`      | No             | Create a user + business, log in       |
+| POST   | `/api/auth/login`         | No             | Log in with email + password           |
+| POST   | `/api/auth/logout`        | No             | Clear the auth cookie                  |
+| GET    | `/api/auth/me`             | Yes            | Return the current authenticated user  |
+| POST   | `/api/auth/forgot-password`| No             | Request a password-reset email/link    |
+| POST   | `/api/auth/reset-password` | No             | Reset password with a valid token      |
+| GET    | `/api/business`            | Yes            | Get the authenticated user's business  |
+| PATCH  | `/api/business`            | Yes            | Update the authenticated user's business|
+
+Authentication uses a JWT stored in an `HttpOnly` cookie — the frontend
+never touches the token directly.
 
 ## Environment Variables
 
@@ -118,7 +140,7 @@ shows whether it successfully reached the backend.
 | Variable       | Description                          |
 |----------------|---------------------------------------|
 | `DATABASE_URL` | PostgreSQL connection string           |
-| `JWT_SECRET`   | Secret used for signing auth tokens (used starting Phase 1) |
+| `JWT_SECRET`   | Secret used for signing auth tokens    |
 | `CLIENT_URL`   | Frontend origin, used for CORS         |
 | `SERVER_URL`   | Backend's own public URL               |
 | `PORT`         | Port the Express server listens on (defaults to `5000`) |
