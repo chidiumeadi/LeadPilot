@@ -2,6 +2,7 @@ import { Bell, Calendar, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import AnalyticsOverview from '../components/dashboard/AnalyticsOverview'
 import EmptyState from '../components/dashboard/EmptyState'
 import { useAuth } from '../context/AuthContext'
 import * as followUpService from '../services/followUpService'
@@ -96,8 +97,8 @@ function UpcomingFollowUps() {
   )
 }
 
-// Phase 2 established the shell; Phase 5 adds a small upcoming-follow-ups
-// glance section. Real dashboard statistics/analytics are a later phase.
+// Phase 2 established the shell; Phase 5 added the small upcoming-follow-ups
+// glance section; Phase 7 adds the real analytics overview (AnalyticsOverview).
 export default function DashboardPage() {
   const { user } = useAuth()
 
@@ -105,11 +106,10 @@ export default function DashboardPage() {
     <div>
       <h2 className="text-xl font-semibold text-gray-900">Welcome, {user?.name}</h2>
       <p className="mt-1 text-sm text-gray-500">{user?.business.name}</p>
-      <p className="mt-4 max-w-2xl text-sm text-gray-500">
-        LeadPilot will help {user?.business.name} capture, organize, and follow up on leads from every
-        channel so no potential customer gets forgotten. The sections below will come to life over the
-        next phases.
-      </p>
+
+      <div className="mt-6">
+        <AnalyticsOverview />
+      </div>
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {quickLinks.map((item) => (
