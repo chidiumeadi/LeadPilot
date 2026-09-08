@@ -5,10 +5,10 @@ and follow up on leads coming from channels like WhatsApp, Instagram,
 Facebook, phone calls, referrals, and their website — so no potential
 customer gets forgotten.
 
-> **Status:** Phase 3 — Lead Management. Follow-ups, notifications,
-> analytics, and public lead capture are implemented in later
-> development phases and do not exist yet — the sidebar links for
-> them are placeholders.
+> **Status:** Phase 4 — Public Lead Capture. Follow-up automation,
+> notifications, and analytics are implemented in later development
+> phases and do not exist yet — the sidebar links for them are
+> placeholders.
 
 ## Tech Stack
 
@@ -39,8 +39,8 @@ leadpilot/
 │       ├── config/     # env variable access, navigation, lead status
 │       ├── context/    # AuthContext (auth state)
 │       ├── hooks/       # small reusable hooks (debounce, etc.)
-│       ├── pages/      # route-level components (incl. pages/leads/)
-│       ├── services/   # API client (Axios) + auth/lead API calls
+│       ├── pages/      # route-level components (leads/, public/, etc.)
+│       ├── services/   # API client (Axios) + auth/lead/public API calls
 │       ├── types/       # shared frontend types
 │       └── utils/       # small helpers (API error extraction)
 ├── server/          # Node + Express + TypeScript backend
@@ -48,8 +48,8 @@ leadpilot/
 │   │   ├── config/       # env, Prisma client, CORS, cookie config
 │   │   ├── controllers/  # request handlers
 │   │   ├── middleware/   # auth, rate limiting, error handling
-│   │   ├── routes/       # Express routers
-│   │   ├── services/     # business logic (auth, business, leads, tokens)
+│   │   ├── routes/       # Express routers (incl. the unauthenticated public router)
+│   │   ├── services/     # business logic (auth, business, leads, public, tokens)
 │   │   ├── utils/        # shared helpers (validation, slugify)
 │   │   ├── validators/   # Zod request schemas
 │   │   └── app.ts        # Express app entry point
@@ -113,6 +113,11 @@ register a new account (which also creates your business), log in,
 log out, and use the forgot-password / reset-password flow. See
 [API Endpoints](#api-endpoints) below.
 
+Every business also gets a public lead-capture page at
+`/lead/:businessSlug` (e.g. `/lead/your-business-slug`, using the slug
+shown in your dashboard) — no login required. Submissions there show
+up in Lead Management with source `PUBLIC_FORM`.
+
 ## API Endpoints
 
 | Method | Path                       | Auth required | Purpose                              |
@@ -130,10 +135,15 @@ log out, and use the forgot-password / reset-password flow. See
 | GET    | `/api/leads/:id`            | Yes            | Get one lead (404 if it belongs to another business) |
 | PATCH  | `/api/leads/:id`            | Yes            | Update a lead (business ownership can't be changed) |
 | DELETE | `/api/leads/:id`            | Yes            | Delete a lead |
+| GET    | `/api/public/business/:businessSlug` | No   | Public-safe business info (name, slug) for the lead-capture page |
+| POST   | `/api/public/leads/:businessSlug`    | No   | Anonymous lead submission (source is always `PUBLIC_FORM`) |
 
 Authentication uses a JWT stored in an `HttpOnly` cookie — the frontend
 never touches the token directly. Every `/api/leads` query is scoped
-to the authenticated user's business at the database level.
+to the authenticated user's business at the database level. The
+`/api/public/*` routes are the only unauthenticated ones and are rate
+limited separately (stricter than the rest of the app) since they're
+open to anonymous submissions.
 
 ## Environment Variables
 
