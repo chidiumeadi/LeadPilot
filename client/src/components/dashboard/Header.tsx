@@ -1,7 +1,8 @@
 import { Bell, LogOut, Menu } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 
 interface HeaderProps {
   title: string
@@ -19,6 +20,7 @@ function getInitials(name: string): string {
 
 export default function Header({ title, onOpenMobileNav }: HeaderProps) {
   const { user, logout } = useAuth()
+  const { unreadCount } = useNotifications()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -39,14 +41,21 @@ export default function Header({ title, onOpenMobileNav }: HeaderProps) {
 
       <h1 className="flex-1 truncate text-base font-semibold text-gray-900">{title}</h1>
 
-      <button
-        type="button"
-        disabled
-        aria-label="Notifications (coming soon)"
-        className="rounded-md p-2 text-gray-400 disabled:cursor-not-allowed"
+      <Link
+        to="/notifications"
+        aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+        className="relative rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
       >
         <Bell className="h-5 w-5" aria-hidden="true" />
-      </button>
+        {unreadCount > 0 && (
+          <span
+            aria-hidden="true"
+            className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-medium text-white"
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </Link>
 
       {user && (
         <div className="hidden items-center gap-2 sm:flex">

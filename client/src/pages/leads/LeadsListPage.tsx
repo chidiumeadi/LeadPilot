@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import EmptyState from '../../components/dashboard/EmptyState'
 import DeleteLeadDialog from '../../components/leads/DeleteLeadDialog'
-import Pagination from '../../components/leads/Pagination'
+import Pagination from '../../components/Pagination'
 import StatusBadge from '../../components/leads/StatusBadge'
 import { LEAD_STATUSES, leadStatusLabels } from '../../config/leadStatus'
 import type { LeadStatus } from '../../config/leadStatus'
