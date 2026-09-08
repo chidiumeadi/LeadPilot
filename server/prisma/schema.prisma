@@ -2,8 +2,10 @@
 // Phase 1: authentication & business-account foundation (businesses, users,
 // password reset tokens).
 // Phase 3: lead management (leads).
-// follow_ups, lead_activities, and notifications are introduced in their
-// respective later phases per the LeadPilot MVP Technical Specification v1.0.
+// Phase 5: follow-up system (follow_ups) — records of intended follow-up
+// actions only; nothing here executes automatically (see FollowUp below).
+// lead_activities and notifications are introduced in their respective
+// later phases per the LeadPilot MVP Technical Specification v1.0.
 
 generator client {
   provider = "prisma-client-js"
@@ -24,8 +26,9 @@ model Business {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  users User[]
-  leads Lead[]
+  users     User[]
+  leads     Lead[]
+  followUps FollowUp[]
 
   @@map("businesses")
 }
@@ -82,9 +85,50 @@ model Lead {
   createdAt  DateTime   @default(now()) @map("created_at")
   updatedAt  DateTime   @updatedAt @map("updated_at")
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business  Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  followUps FollowUp[]
 
   @@index([businessId])
   @@index([businessId, status])
   @@map("leads")
+}
+
+enum FollowUpType {
+  CALL
+  EMAIL
+  SMS
+  WHATSAPP
+  OTHER
+}
+
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+// A record of a follow-up action the business INTENDS to perform for a
+// lead. Phase 5 only creates/manages these records — nothing here is
+// executed automatically (no cron/queue/worker/email/SMS/WhatsApp
+// sending). Automated execution is Phase 6.
+model FollowUp {
+  id          String         @id @default(uuid())
+  businessId  String         @map("business_id")
+  leadId      String         @map("lead_id")
+  type        FollowUpType
+  status      FollowUpStatus @default(PENDING)
+  scheduledAt DateTime       @map("scheduled_at")
+  notes       String?
+  completedAt DateTime?      @map("completed_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  lead     Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([leadId])
+  @@index([businessId, status])
+  @@index([businessId, scheduledAt])
+  @@map("follow_ups")
 }
