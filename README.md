@@ -5,10 +5,11 @@ and follow up on leads coming from channels like WhatsApp, Instagram,
 Facebook, phone calls, referrals, and their website — so no potential
 customer gets forgotten.
 
-> **Status:** Phase 4 — Public Lead Capture. Follow-up automation,
-> notifications, and analytics are implemented in later development
-> phases and do not exist yet — the sidebar links for them are
-> placeholders.
+> **Status:** Phase 5 — Follow-Up System. Follow-up *records* can be
+> created and managed from a lead's page, but nothing is executed
+> automatically — no emails/SMS/WhatsApp are sent and no scheduled
+> jobs run. That automation, along with notifications and analytics,
+> is implemented in later development phases.
 
 ## Tech Stack
 
@@ -35,12 +36,12 @@ customer gets forgotten.
 leadpilot/
 ├── client/          # React + TypeScript frontend (Vite)
 │   └── src/
-│       ├── components/ # AuthCard, FormField, dashboard shell, leads/, etc.
-│       ├── config/     # env variable access, navigation, lead status
+│       ├── components/ # AuthCard, FormField, dashboard shell, leads/, followUps/, etc.
+│       ├── config/     # env variable access, navigation, lead/follow-up status
 │       ├── context/    # AuthContext (auth state)
 │       ├── hooks/       # small reusable hooks (debounce, etc.)
 │       ├── pages/      # route-level components (leads/, public/, etc.)
-│       ├── services/   # API client (Axios) + auth/lead/public API calls
+│       ├── services/   # API client (Axios) + auth/lead/public/follow-up calls
 │       ├── types/       # shared frontend types
 │       └── utils/       # small helpers (API error extraction)
 ├── server/          # Node + Express + TypeScript backend
@@ -49,12 +50,12 @@ leadpilot/
 │   │   ├── controllers/  # request handlers
 │   │   ├── middleware/   # auth, rate limiting, error handling
 │   │   ├── routes/       # Express routers (incl. the unauthenticated public router)
-│   │   ├── services/     # business logic (auth, business, leads, public, tokens)
+│   │   ├── services/     # business logic (auth, business, leads, public, follow-ups, tokens)
 │   │   ├── utils/        # shared helpers (validation, slugify)
 │   │   ├── validators/   # Zod request schemas
 │   │   └── app.ts        # Express app entry point
 │   └── prisma/
-│       ├── schema.prisma     # businesses, users, password_reset_tokens, leads
+│       ├── schema.prisma     # businesses, users, password_reset_tokens, leads, follow_ups
 │       └── migrations/
 ├── README.md
 ├── .gitignore
@@ -137,13 +138,24 @@ up in Lead Management with source `PUBLIC_FORM`.
 | DELETE | `/api/leads/:id`            | Yes            | Delete a lead |
 | GET    | `/api/public/business/:businessSlug` | No   | Public-safe business info (name, slug) for the lead-capture page |
 | POST   | `/api/public/leads/:businessSlug`    | No   | Anonymous lead submission (source is always `PUBLIC_FORM`) |
+| GET    | `/api/follow-ups`           | Yes            | List the business's follow-ups (filter by `leadId`, `status`, or `when=upcoming\|overdue`) |
+| POST   | `/api/follow-ups`           | Yes            | Create a follow-up for one of the business's own leads (always starts `PENDING`) |
+| GET    | `/api/follow-ups/:id`       | Yes            | Get one follow-up |
+| PATCH  | `/api/follow-ups/:id`       | Yes            | Update type/scheduledAt/notes (status can't be changed this way) |
+| POST   | `/api/follow-ups/:id/complete` | Yes         | Mark a pending follow-up completed (server sets `completedAt`) |
+| POST   | `/api/follow-ups/:id/cancel`   | Yes         | Mark a pending follow-up cancelled |
+| DELETE | `/api/follow-ups/:id`       | Yes            | Delete a follow-up |
 
 Authentication uses a JWT stored in an `HttpOnly` cookie — the frontend
-never touches the token directly. Every `/api/leads` query is scoped
-to the authenticated user's business at the database level. The
-`/api/public/*` routes are the only unauthenticated ones and are rate
-limited separately (stricter than the rest of the app) since they're
-open to anonymous submissions.
+never touches the token directly. Every `/api/leads` and
+`/api/follow-ups` query is scoped to the authenticated user's business
+at the database level. The `/api/public/*` routes are the only
+unauthenticated ones and are rate limited separately (stricter than
+the rest of the app) since they're open to anonymous submissions.
+
+Follow-ups are records only — creating one with a future `scheduledAt`
+does not send anything or schedule any job. Actually executing a
+follow-up (email/SMS/WhatsApp) is a later phase.
 
 ## Environment Variables
 
