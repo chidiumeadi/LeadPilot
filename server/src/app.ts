@@ -6,6 +6,7 @@ import { corsOptions } from './config/cors'
 import { env } from './config/env'
 import { startFollowUpScheduler, stopFollowUpScheduler } from './jobs/scheduler'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler'
+import analyticsRoutes from './routes/analytics'
 import authRoutes from './routes/auth'
 import businessRoutes from './routes/business'
 import followUpRoutes from './routes/followUps'
@@ -27,6 +28,7 @@ app.use('/api/leads', leadRoutes)
 app.use('/api/public', publicRoutes)
 app.use('/api/follow-ups', followUpRoutes)
 app.use('/api/notifications', notificationRoutes)
+app.use('/api/analytics', analyticsRoutes)
 
 app.use(notFoundHandler)
 app.use(errorHandler)
