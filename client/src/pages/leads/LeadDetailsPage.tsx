@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import FollowUpSection from '../../components/followUps/FollowUpSection'
 import DeleteLeadDialog from '../../components/leads/DeleteLeadDialog'
 import StatusBadge from '../../components/leads/StatusBadge'
 import * as leadService from '../../services/leadService'
@@ -105,6 +106,8 @@ export default function LeadDetailsPage() {
         <DetailRow label="Created" value={new Date(lead.createdAt).toLocaleString()} />
         <DetailRow label="Last updated" value={new Date(lead.updatedAt).toLocaleString()} />
       </dl>
+
+      <FollowUpSection leadId={lead.id} />
 
       {showDeleteDialog && (
         <DeleteLeadDialog

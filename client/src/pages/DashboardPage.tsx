@@ -1,8 +1,12 @@
 import { Bell, Calendar, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import EmptyState from '../components/dashboard/EmptyState'
 import { useAuth } from '../context/AuthContext'
+import * as followUpService from '../services/followUpService'
+import type { FollowUp } from '../types/followUp'
+import { followUpTypeLabels } from '../config/followUp'
 
 const quickLinks = [
   {
@@ -25,8 +29,75 @@ const quickLinks = [
   },
 ]
 
-// Phase 2: dashboard shell only. Real lead/follow-up data and statistics
-// are wired up in later phases.
+function formatScheduled(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+// Small glance widget only — a handful of soonest-due items, fetched with
+// server-side filtering (when=upcoming). This is not the Phase 7 analytics
+// dashboard: no charts, no counts beyond what's rendered, no client-side
+// filtering of a large dataset.
+function UpcomingFollowUps() {
+  const [followUps, setFollowUps] = useState<FollowUp[]>([])
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
+
+  useEffect(() => {
+    let cancelled = false
+
+    followUpService
+      .fetchFollowUps({ when: 'upcoming', limit: 5 })
+      .then((result) => {
+        if (cancelled) return
+        setFollowUps(result.items)
+        setLoadState('ready')
+      })
+      .catch(() => {
+        if (cancelled) return
+        setLoadState('error')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (loadState === 'loading') {
+    return <p className="py-6 text-center text-sm text-gray-400">Loading…</p>
+  }
+
+  if (loadState === 'error') {
+    return <p className="py-6 text-center text-sm text-red-600">Could not load upcoming follow-ups.</p>
+  }
+
+  if (followUps.length === 0) {
+    return (
+      <EmptyState
+        title="No upcoming follow-ups"
+        description="Follow-ups you schedule from a lead's page will show up here."
+      />
+    )
+  }
+
+  return (
+    <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+      {followUps.map((followUp) => (
+        <li key={followUp.id}>
+          <Link to={`/leads/${followUp.leadId}`} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-gray-50">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-gray-900">
+                {followUpTypeLabels[followUp.type]} — {followUp.lead.name}
+              </p>
+              <p className="text-xs text-gray-500">{formatScheduled(followUp.scheduledAt)}</p>
+            </div>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// Phase 2 established the shell; Phase 5 adds a small upcoming-follow-ups
+// glance section. Real dashboard statistics/analytics are a later phase.
 export default function DashboardPage() {
   const { user } = useAuth()
 
@@ -55,10 +126,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-8">
-        <EmptyState
-          title="No activity yet"
-          description="Once you start capturing leads, recent activity will show up here."
-        />
+        <h3 className="text-sm font-medium text-gray-900">Upcoming follow-ups</h3>
+        <div className="mt-3">
+          <UpcomingFollowUps />
+        </div>
       </div>
     </div>
   )
