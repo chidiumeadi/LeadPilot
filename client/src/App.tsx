@@ -13,11 +13,13 @@ import LeadsListPage from './pages/leads/LeadsListPage'
 import NewLeadPage from './pages/leads/NewLeadPage'
 import LoginPage from './pages/LoginPage'
 import PlaceholderPage from './pages/PlaceholderPage'
+import PublicLeadCapturePage from './pages/public/PublicLeadCapturePage'
 import RegisterPage from './pages/RegisterPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 
 // Phase 2 established the dashboard shell (layout, navigation, placeholders).
-// Phase 3 adds real Lead Management under /leads.
+// Phase 3 added real Lead Management under /leads.
+// Phase 4 adds the public, unauthenticated lead-capture page at /lead/:businessSlug.
 // Follow-ups and notifications are built in later phases.
 function App() {
   return (
@@ -33,6 +35,7 @@ function App() {
 
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/lead/:businessSlug" element={<PublicLeadCapturePage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AuthenticatedLayout />}>
