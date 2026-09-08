@@ -5,11 +5,13 @@ and follow up on leads coming from channels like WhatsApp, Instagram,
 Facebook, phone calls, referrals, and their website — so no potential
 customer gets forgotten.
 
-> **Status:** Phase 5 — Follow-Up System. Follow-up *records* can be
-> created and managed from a lead's page, but nothing is executed
-> automatically — no emails/SMS/WhatsApp are sent and no scheduled
-> jobs run. That automation, along with notifications and analytics,
-> is implemented in later development phases.
+> **Status:** Phase 6 — Notifications & Scheduled Jobs. A background
+> job now detects follow-ups that are due and creates an in-app
+> notification for the business owner. It never sends a real
+> email/SMS/WhatsApp and never changes a follow-up's status — it only
+> creates a `FOLLOW_UP_DUE` notification, visible via the bell icon and
+> `/notifications` page. Real outbound messaging and analytics are
+> implemented in later development phases.
 
 ## Tech Stack
 
@@ -38,24 +40,25 @@ leadpilot/
 │   └── src/
 │       ├── components/ # AuthCard, FormField, dashboard shell, leads/, followUps/, etc.
 │       ├── config/     # env variable access, navigation, lead/follow-up status
-│       ├── context/    # AuthContext (auth state)
+│       ├── context/    # AuthContext (auth state), NotificationContext (unread count)
 │       ├── hooks/       # small reusable hooks (debounce, etc.)
-│       ├── pages/      # route-level components (leads/, public/, etc.)
-│       ├── services/   # API client (Axios) + auth/lead/public/follow-up calls
+│       ├── pages/      # route-level components (leads/, public/, NotificationsPage, etc.)
+│       ├── services/   # API client (Axios) + auth/lead/public/follow-up/notification calls
 │       ├── types/       # shared frontend types
-│       └── utils/       # small helpers (API error extraction)
+│       └── utils/       # small helpers (API error extraction, relative time)
 ├── server/          # Node + Express + TypeScript backend
 │   ├── src/
 │   │   ├── config/       # env, Prisma client, CORS, cookie config
 │   │   ├── controllers/  # request handlers
+│   │   ├── jobs/          # followUpNotificationJob (business logic) + scheduler (setInterval wrapper)
 │   │   ├── middleware/   # auth, rate limiting, error handling
 │   │   ├── routes/       # Express routers (incl. the unauthenticated public router)
-│   │   ├── services/     # business logic (auth, business, leads, public, follow-ups, tokens)
+│   │   ├── services/     # business logic (auth, business, leads, public, follow-ups, notifications, tokens)
 │   │   ├── utils/        # shared helpers (validation, slugify)
 │   │   ├── validators/   # Zod request schemas
-│   │   └── app.ts        # Express app entry point
+│   │   └── app.ts        # Express app entry point (also starts/stops the scheduler)
 │   └── prisma/
-│       ├── schema.prisma     # businesses, users, password_reset_tokens, leads, follow_ups
+│       ├── schema.prisma     # businesses, users, password_reset_tokens, leads, follow_ups, notifications
 │       └── migrations/
 ├── README.md
 ├── .gitignore
@@ -145,17 +148,28 @@ up in Lead Management with source `PUBLIC_FORM`.
 | POST   | `/api/follow-ups/:id/complete` | Yes         | Mark a pending follow-up completed (server sets `completedAt`) |
 | POST   | `/api/follow-ups/:id/cancel`   | Yes         | Mark a pending follow-up cancelled |
 | DELETE | `/api/follow-ups/:id`       | Yes            | Delete a follow-up |
+| GET    | `/api/notifications`        | Yes            | List the business's notifications (pagination, `unread=true\|false` filter) |
+| GET    | `/api/notifications/unread-count` | Yes      | Count of unread notifications, for the header bell badge |
+| PATCH  | `/api/notifications/:id/read`     | Yes      | Mark one notification read (idempotent) |
+| PATCH  | `/api/notifications/read-all`     | Yes      | Mark every notification for the business read |
 
 Authentication uses a JWT stored in an `HttpOnly` cookie — the frontend
-never touches the token directly. Every `/api/leads` and
-`/api/follow-ups` query is scoped to the authenticated user's business
-at the database level. The `/api/public/*` routes are the only
+never touches the token directly. Every `/api/leads`, `/api/follow-ups`,
+and `/api/notifications` query is scoped to the authenticated user's
+business at the database level. The `/api/public/*` routes are the only
 unauthenticated ones and are rate limited separately (stricter than
 the rest of the app) since they're open to anonymous submissions.
 
 Follow-ups are records only — creating one with a future `scheduledAt`
-does not send anything or schedule any job. Actually executing a
-follow-up (email/SMS/WhatsApp) is a later phase.
+does not send anything by itself. What Phase 6 adds is a background
+job (`server/src/jobs/`) that, on an interval (`FOLLOW_UP_JOB_INTERVAL_MS`,
+default 60s), finds `PENDING` follow-ups whose `scheduledAt` has
+passed and haven't already been notified, and creates one
+`FOLLOW_UP_DUE` notification each — using a database-level unique
+constraint (`@@unique([followUpId, type])`) plus `skipDuplicates` so
+concurrent or repeated runs can never create a duplicate. The job
+never sends a real email/SMS/WhatsApp and never changes a follow-up's
+status — actually executing a follow-up that way is a later phase.
 
 ## Environment Variables
 
@@ -174,6 +188,7 @@ follow-up (email/SMS/WhatsApp) is a later phase.
 | `CLIENT_URL`   | Frontend origin, used for CORS         |
 | `SERVER_URL`   | Backend's own public URL               |
 | `PORT`         | Port the Express server listens on (defaults to `5000`) |
+| `FOLLOW_UP_JOB_INTERVAL_MS` | How often the follow-up notification job runs, in ms (defaults to `60000`) |
 
 Never commit real values — only `.env.example` files (with variable
 names but no secrets) are tracked in Git.
