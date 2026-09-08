@@ -5,13 +5,13 @@ and follow up on leads coming from channels like WhatsApp, Instagram,
 Facebook, phone calls, referrals, and their website — so no potential
 customer gets forgotten.
 
-> **Status:** Phase 6 — Notifications & Scheduled Jobs. A background
-> job now detects follow-ups that are due and creates an in-app
-> notification for the business owner. It never sends a real
-> email/SMS/WhatsApp and never changes a follow-up's status — it only
-> creates a `FOLLOW_UP_DUE` notification, visible via the bell icon and
-> `/notifications` page. Real outbound messaging and analytics are
-> implemented in later development phases.
+> **Status:** Phase 7 — Dashboard Analytics. The Dashboard now shows a
+> real, server-aggregated analytics overview for the authenticated
+> business: lead KPIs, a status/source breakdown, a lead-creation
+> trend, and a follow-up summary, all filterable by date range and
+> computed entirely from that business's own database records — no
+> hardcoded or fabricated numbers. Settings, billing, and advanced
+> reporting are implemented in later development phases.
 
 ## Tech Stack
 
@@ -38,12 +38,12 @@ customer gets forgotten.
 leadpilot/
 ├── client/          # React + TypeScript frontend (Vite)
 │   └── src/
-│       ├── components/ # AuthCard, FormField, dashboard shell, leads/, followUps/, etc.
-│       ├── config/     # env variable access, navigation, lead/follow-up status
+│       ├── components/ # AuthCard, FormField, dashboard shell (incl. AnalyticsOverview), leads/, followUps/, etc.
+│       ├── config/     # env variable access, navigation, lead/follow-up status, analytics ranges
 │       ├── context/    # AuthContext (auth state), NotificationContext (unread count)
 │       ├── hooks/       # small reusable hooks (debounce, etc.)
 │       ├── pages/      # route-level components (leads/, public/, NotificationsPage, etc.)
-│       ├── services/   # API client (Axios) + auth/lead/public/follow-up/notification calls
+│       ├── services/   # API client (Axios) + auth/lead/public/follow-up/notification/analytics calls
 │       ├── types/       # shared frontend types
 │       └── utils/       # small helpers (API error extraction, relative time)
 ├── server/          # Node + Express + TypeScript backend
@@ -53,7 +53,7 @@ leadpilot/
 │   │   ├── jobs/          # followUpNotificationJob (business logic) + scheduler (setInterval wrapper)
 │   │   ├── middleware/   # auth, rate limiting, error handling
 │   │   ├── routes/       # Express routers (incl. the unauthenticated public router)
-│   │   ├── services/     # business logic (auth, business, leads, public, follow-ups, notifications, tokens)
+│   │   ├── services/     # business logic (auth, business, leads, public, follow-ups, notifications, analytics, tokens)
 │   │   ├── utils/        # shared helpers (validation, slugify)
 │   │   ├── validators/   # Zod request schemas
 │   │   └── app.ts        # Express app entry point (also starts/stops the scheduler)
@@ -152,13 +152,62 @@ up in Lead Management with source `PUBLIC_FORM`.
 | GET    | `/api/notifications/unread-count` | Yes      | Count of unread notifications, for the header bell badge |
 | PATCH  | `/api/notifications/:id/read`     | Yes      | Mark one notification read (idempotent) |
 | PATCH  | `/api/notifications/read-all`     | Yes      | Mark every notification for the business read |
+| GET    | `/api/analytics/dashboard`  | Yes            | Server-aggregated dashboard analytics (`?range=7d\|30d\|90d\|all`, default `30d`) |
 
 Authentication uses a JWT stored in an `HttpOnly` cookie — the frontend
 never touches the token directly. Every `/api/leads`, `/api/follow-ups`,
-and `/api/notifications` query is scoped to the authenticated user's
-business at the database level. The `/api/public/*` routes are the only
-unauthenticated ones and are rate limited separately (stricter than
-the rest of the app) since they're open to anonymous submissions.
+`/api/notifications`, and `/api/analytics` query is scoped to the
+authenticated user's business at the database level — the business is
+always derived from the session, never from a client-supplied
+`businessId`. The `/api/public/*` routes are the only unauthenticated
+ones and are rate limited separately (stricter than the rest of the
+app) since they're open to anonymous submissions.
+
+### Dashboard analytics
+
+`GET /api/analytics/dashboard?range=7d|30d|90d|all` returns:
+
+```json
+{
+  "success": true,
+  "data": {
+    "range": "30d",
+    "summary": { "totalLeads": 12, "newLeads": 7, "convertedLeads": 0, "conversionRate": 0 },
+    "leadsByStatus": [{ "status": "NEW", "count": 5 }, ...],
+    "leadsBySource": [{ "source": "MANUAL", "label": "Manual", "count": 5 }, ...],
+    "leadTrend": [{ "date": "2026-08-10", "count": 0 }, ...],
+    "followUps": { "pending": 2, "overdue": 1, "completed": 1, "cancelled": 1 }
+  }
+}
+```
+
+Metric definitions (see `server/src/services/analyticsService.ts` for the
+full reasoning in comments):
+
+- **Total Leads** — all-time count, not affected by the selected range.
+- **New Leads** / status / source breakdown / trend — all scoped by
+  `Lead.createdAt` falling within the selected range (never `updatedAt`,
+  so editing a lead never makes it look newly acquired).
+- **Converted Leads** — a *cohort* metric: of the leads created within
+  the selected range, how many currently have status `CONVERTED`. The
+  Lead model only stores current status, not a history of transitions,
+  so this is the most honest metric the data can support — it is not
+  "conversions that happened during this period."
+- **Conversion Rate** — `convertedLeads / newLeads` within that same
+  cohort (0 if there were no new leads in the range).
+- **Pending** / **Overdue** follow-ups — real-time current-state counts,
+  intentionally *not* scoped by the selected range (an overdue
+  follow-up from last month is still overdue today).
+- **Completed** follow-ups — scoped by `completedAt` within the
+  selected range (the one follow-up metric the range actually affects).
+- **Cancelled** follow-ups — an all-time count; there is no
+  `cancelledAt` timestamp on the model, so this can't be scoped by
+  period without fabricating one.
+
+The lead trend is zero-filled and bucketed by day (7d/30d), week (90d),
+or month (`all`) so charts never jump between only the days that had
+activity. All date/bucket math is done in UTC from database timestamps,
+never the browser's timezone.
 
 Follow-ups are records only — creating one with a future `scheduledAt`
 does not send anything by itself. What Phase 6 adds is a background
