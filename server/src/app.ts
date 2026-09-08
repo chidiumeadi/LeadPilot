@@ -7,6 +7,7 @@ import { env } from './config/env'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler'
 import authRoutes from './routes/auth'
 import businessRoutes from './routes/business'
+import followUpRoutes from './routes/followUps'
 import healthRoutes from './routes/health'
 import leadRoutes from './routes/leads'
 import publicRoutes from './routes/public'
@@ -22,7 +23,8 @@ app.use('/api/auth', authRoutes)
 app.use('/api/business', businessRoutes)
 app.use('/api/leads', leadRoutes)
 app.use('/api/public', publicRoutes)
-// Later phases mount /api/follow-ups, /api/notifications, etc. here.
+app.use('/api/follow-ups', followUpRoutes)
+// Later phases mount /api/notifications, etc. here.
 
 app.use(notFoundHandler)
 app.use(errorHandler)
