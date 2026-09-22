@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import FollowUpSection from '../../components/followUps/FollowUpSection'
 import DeleteLeadDialog from '../../components/leads/DeleteLeadDialog'
+import LeadActivityList from '../../components/leads/LeadActivityList'
+import LeadStatusControl from '../../components/leads/LeadStatusControl'
 import StatusBadge from '../../components/leads/StatusBadge'
 import * as leadService from '../../services/leadService'
 import type { Lead } from '../../types/lead'
@@ -77,8 +79,13 @@ export default function LeadDetailsPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">{lead.name}</h2>
-          <div className="mt-2">
+          <div className="mt-2 flex items-center gap-3">
             <StatusBadge status={lead.status} />
+            <LeadStatusControl
+              leadId={lead.id}
+              status={lead.status}
+              onChanged={(status) => setLead((prev) => (prev ? { ...prev, status } : prev))}
+            />
           </div>
         </div>
         <div className="flex shrink-0 gap-3">
@@ -105,9 +112,12 @@ export default function LeadDetailsPage() {
         <DetailRow label="Notes" value={lead.notes || '—'} multiline />
         <DetailRow label="Created" value={new Date(lead.createdAt).toLocaleString()} />
         <DetailRow label="Last updated" value={new Date(lead.updatedAt).toLocaleString()} />
+        {lead.convertedAt && <DetailRow label="Converted" value={new Date(lead.convertedAt).toLocaleString()} />}
       </dl>
 
       <FollowUpSection leadId={lead.id} />
+
+      <LeadActivityList leadId={lead.id} />
 
       {showDeleteDialog && (
         <DeleteLeadDialog
