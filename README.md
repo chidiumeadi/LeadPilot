@@ -5,15 +5,14 @@ and follow up on leads coming from channels like WhatsApp, Instagram,
 Facebook, phone calls, referrals, and their website — so no potential
 customer gets forgotten.
 
-> **Status:** Phase 8 — Lead Pipeline & Conversion Workflow. Leads now
-> have a clear, ownable lifecycle: a business can move a lead through
-> NEW → CONTACTED → QUALIFIED → CONVERTED/LOST from its detail page or
-> a new Pipeline board, every meaningful thing that happens to a lead
-> (created, status changed, follow-up scheduled/completed/cancelled, a
-> reminder sent) is recorded in a lightweight activity history, and a
-> lead's first conversion is timestamped and preserved. Settings,
-> billing, and advanced reporting are implemented in later development
-> phases.
+> **Status:** Phase 9 — Communication & Follow-Up Automation. A business
+> can log that a communication happened with a lead (call/email/SMS/
+> WhatsApp/note, with an optional outcome), optionally creating a
+> follow-up in the same step, all recorded in the same activity history
+> Phase 8 introduced. This is an internal record-keeping workflow only —
+> no email/SMS/WhatsApp is actually sent; that remains a later phase.
+> Settings, billing, and advanced reporting are implemented in later
+> development phases.
 
 ## Tech Stack
 
@@ -55,7 +54,7 @@ leadpilot/
 │   │   ├── jobs/          # followUpNotificationJob (business logic) + scheduler (setInterval wrapper)
 │   │   ├── middleware/   # auth, rate limiting, error handling
 │   │   ├── routes/       # Express routers (incl. the unauthenticated public router)
-│   │   ├── services/     # business logic (auth, business, leads, public, follow-ups, notifications, lead activity, analytics, tokens)
+│   │   ├── services/     # business logic (auth, business, leads, public, follow-ups, notifications, lead activity, communications, analytics, tokens)
 │   │   ├── utils/        # shared helpers (validation, slugify)
 │   │   ├── validators/   # Zod request schemas
 │   │   └── app.ts        # Express app entry point (also starts/stops the scheduler)
@@ -142,6 +141,7 @@ up in Lead Management with source `PUBLIC_FORM`.
 | PATCH  | `/api/leads/:id`            | Yes            | Update a lead (business ownership can't be changed) |
 | PATCH  | `/api/leads/:id/status`     | Yes            | Change a lead's status; records a STATUS_CHANGED activity and, on first CONVERTED, sets `convertedAt` |
 | GET    | `/api/leads/:id/activities` | Yes            | List a lead's activity history, newest first |
+| POST   | `/api/leads/:id/communications` | Yes        | Log a communication (call/email/SMS/WhatsApp/note); optionally creates a follow-up in the same request |
 | DELETE | `/api/leads/:id`            | Yes            | Delete a lead |
 | GET    | `/api/public/business/:businessSlug` | No   | Public-safe business info (name, slug) for the lead-capture page |
 | POST   | `/api/public/leads/:businessSlug`    | No   | Anonymous lead submission (source is always `PUBLIC_FORM`) |
@@ -207,6 +207,8 @@ full reasoning in comments):
 - **Cancelled** follow-ups — an all-time count; there is no
   `cancelledAt` timestamp on the model, so this can't be scoped by
   period without fabricating one.
+- **Communications** (total + by type) — scoped by `occurredAt` within
+  the selected range, the same [start, now] window as `newLeads`.
 
 The lead trend is zero-filled and bucketed by day (7d/30d), week (90d),
 or month (`all`) so charts never jump between only the days that had
@@ -233,10 +235,34 @@ converted" (that's `status`).
 
 Every meaningful thing that happens to a lead — created, status
 changed, a follow-up scheduled/completed/cancelled, a due-follow-up
-reminder sent — is recorded as a `LeadActivity` row with a plain-text
-description, visible on the lead's page. See
+reminder sent, a communication logged — is recorded as a `LeadActivity`
+row with a plain-text description, visible on the lead's page. See
 `server/src/services/leadActivityService.ts` for the single place that
 decides what each activity's description says.
+
+### Communication logging (Phase 9)
+
+From a lead's page, "Log Communication" records that a call, email,
+SMS, WhatsApp message, or note happened — type, notes (required),
+an optional outcome, and when it happened. This reuses the
+`LeadActivity` table from Phase 8 rather than a parallel history model:
+`communicationType`/`communicationOutcome`/`occurredAt` are extra
+columns populated only on `type: COMMUNICATION_LOGGED` rows (null on
+every other activity type). Checking "Create follow-up" on that same
+form creates a real `FollowUp` through the existing Phase 5 service
+(`followUpService.createFollowUp`) — not a reimplementation — so it's
+picked up by the Phase 6 scheduler exactly like any other follow-up.
+Activity History's filter tabs (All/Status/Follow-Ups/Communication)
+are a plain client-side filter over the already-fetched list; there is
+intentionally no separate "Conversion" filter, since a conversion is a
+`STATUS_CHANGED` row distinguished only by its description text — a
+dedicated filter for it would need either a new activity type or
+description-text matching, and neither is a real necessity for this
+list.
+
+No external email/SMS/WhatsApp integration exists yet — this only
+records that a communication happened, the same "internal record,
+nothing sent automatically" boundary Phase 5 drew for follow-ups.
 
 Follow-ups are records only — creating one with a future `scheduledAt`
 does not send anything by itself. What Phase 6 adds is a background
