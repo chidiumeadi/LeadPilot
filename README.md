@@ -5,13 +5,15 @@ and follow up on leads coming from channels like WhatsApp, Instagram,
 Facebook, phone calls, referrals, and their website — so no potential
 customer gets forgotten.
 
-> **Status:** Phase 7 — Dashboard Analytics. The Dashboard now shows a
-> real, server-aggregated analytics overview for the authenticated
-> business: lead KPIs, a status/source breakdown, a lead-creation
-> trend, and a follow-up summary, all filterable by date range and
-> computed entirely from that business's own database records — no
-> hardcoded or fabricated numbers. Settings, billing, and advanced
-> reporting are implemented in later development phases.
+> **Status:** Phase 8 — Lead Pipeline & Conversion Workflow. Leads now
+> have a clear, ownable lifecycle: a business can move a lead through
+> NEW → CONTACTED → QUALIFIED → CONVERTED/LOST from its detail page or
+> a new Pipeline board, every meaningful thing that happens to a lead
+> (created, status changed, follow-up scheduled/completed/cancelled, a
+> reminder sent) is recorded in a lightweight activity history, and a
+> lead's first conversion is timestamped and preserved. Settings,
+> billing, and advanced reporting are implemented in later development
+> phases.
 
 ## Tech Stack
 
@@ -38,7 +40,7 @@ customer gets forgotten.
 leadpilot/
 ├── client/          # React + TypeScript frontend (Vite)
 │   └── src/
-│       ├── components/ # AuthCard, FormField, dashboard shell (incl. AnalyticsOverview), leads/, followUps/, etc.
+│       ├── components/ # AuthCard, FormField, dashboard shell (incl. AnalyticsOverview), leads/ (incl. LeadPipelineBoard, LeadActivityList), followUps/, etc.
 │       ├── config/     # env variable access, navigation, lead/follow-up status, analytics ranges
 │       ├── context/    # AuthContext (auth state), NotificationContext (unread count)
 │       ├── hooks/       # small reusable hooks (debounce, etc.)
@@ -53,12 +55,12 @@ leadpilot/
 │   │   ├── jobs/          # followUpNotificationJob (business logic) + scheduler (setInterval wrapper)
 │   │   ├── middleware/   # auth, rate limiting, error handling
 │   │   ├── routes/       # Express routers (incl. the unauthenticated public router)
-│   │   ├── services/     # business logic (auth, business, leads, public, follow-ups, notifications, analytics, tokens)
+│   │   ├── services/     # business logic (auth, business, leads, public, follow-ups, notifications, lead activity, analytics, tokens)
 │   │   ├── utils/        # shared helpers (validation, slugify)
 │   │   ├── validators/   # Zod request schemas
 │   │   └── app.ts        # Express app entry point (also starts/stops the scheduler)
 │   └── prisma/
-│       ├── schema.prisma     # businesses, users, password_reset_tokens, leads, follow_ups, notifications
+│       ├── schema.prisma     # businesses, users, password_reset_tokens, leads, follow_ups, notifications, lead_activities
 │       └── migrations/
 ├── README.md
 ├── .gitignore
@@ -138,6 +140,8 @@ up in Lead Management with source `PUBLIC_FORM`.
 | POST   | `/api/leads`                | Yes            | Create a lead (source is always `MANUAL` here) |
 | GET    | `/api/leads/:id`            | Yes            | Get one lead (404 if it belongs to another business) |
 | PATCH  | `/api/leads/:id`            | Yes            | Update a lead (business ownership can't be changed) |
+| PATCH  | `/api/leads/:id/status`     | Yes            | Change a lead's status; records a STATUS_CHANGED activity and, on first CONVERTED, sets `convertedAt` |
+| GET    | `/api/leads/:id/activities` | Yes            | List a lead's activity history, newest first |
 | DELETE | `/api/leads/:id`            | Yes            | Delete a lead |
 | GET    | `/api/public/business/:businessSlug` | No   | Public-safe business info (name, slug) for the lead-capture page |
 | POST   | `/api/public/leads/:businessSlug`    | No   | Anonymous lead submission (source is always `PUBLIC_FORM`) |
@@ -208,6 +212,31 @@ The lead trend is zero-filled and bucketed by day (7d/30d), week (90d),
 or month (`all`) so charts never jump between only the days that had
 activity. All date/bucket math is done in UTC from database timestamps,
 never the browser's timezone.
+
+`createdAt` filters are bounded on both ends (`start` and `now`), not
+just the lower edge — this closes a Phase 7 audit finding where a
+lead somehow dated in the future (unreachable through the app itself,
+which always writes `createdAt: now()`) could inflate `newLeads`
+without showing up in `leadTrend`.
+
+### Lead pipeline & activity history
+
+Each lead has a status lifecycle (`NEW → CONTACTED → QUALIFIED →
+CONVERTED/LOST`, the same enum since Phase 3) that a business can move
+through from the lead's own page or the Leads page's Pipeline board
+(`/leads?view=pipeline`, five columns reusing the existing
+`GET /api/leads?status=X` list endpoint — no separate pipeline API).
+`Lead.convertedAt` is set the first time a lead reaches `CONVERTED`
+and is preserved even if the lead later moves to a different status —
+it answers "did this lead ever convert," not "is it currently
+converted" (that's `status`).
+
+Every meaningful thing that happens to a lead — created, status
+changed, a follow-up scheduled/completed/cancelled, a due-follow-up
+reminder sent — is recorded as a `LeadActivity` row with a plain-text
+description, visible on the lead's page. See
+`server/src/services/leadActivityService.ts` for the single place that
+decides what each activity's description says.
 
 Follow-ups are records only — creating one with a future `scheduledAt`
 does not send anything by itself. What Phase 6 adds is a background
