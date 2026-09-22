@@ -1,3 +1,4 @@
+import type { CommunicationType } from '../config/communication'
 import type { LeadStatus } from '../config/leadStatus'
 
 export type AnalyticsRange = '7d' | '30d' | '90d' | 'all'
@@ -33,6 +34,16 @@ export interface FollowUpSummary {
   cancelled: number
 }
 
+export interface CommunicationTypeCount {
+  type: CommunicationType
+  count: number
+}
+
+export interface CommunicationSummary {
+  total: number
+  byType: CommunicationTypeCount[]
+}
+
 export interface DashboardAnalytics {
   range: AnalyticsRange
   summary: AnalyticsSummary
@@ -40,4 +51,5 @@ export interface DashboardAnalytics {
   leadsBySource: LeadSourceCount[]
   leadTrend: LeadTrendPoint[]
   followUps: FollowUpSummary
+  communications: CommunicationSummary
 }

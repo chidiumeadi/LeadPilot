@@ -1,4 +1,7 @@
+import type { CommunicationOutcome, CommunicationType } from '../config/communication'
+import type { FollowUpType } from '../config/followUp'
 import type { LeadStatus } from '../config/leadStatus'
+import type { FollowUp } from '../types/followUp'
 import type { Lead, LeadListResult } from '../types/lead'
 import type { LeadActivity } from '../types/leadActivity'
 import { api } from './api'
@@ -65,4 +68,28 @@ interface LeadActivityListResponse {
 export async function fetchLeadActivities(id: string): Promise<LeadActivity[]> {
   const { data } = await api.get<LeadActivityListResponse>(`/leads/${id}/activities`)
   return data.data.activities
+}
+
+export interface LogCommunicationInput {
+  type: CommunicationType
+  notes: string
+  outcome?: CommunicationOutcome
+  occurredAt?: string
+  followUp?: {
+    scheduledAt: string
+    type?: FollowUpType
+  }
+}
+
+interface LogCommunicationResponse {
+  success: true
+  data: { activity: LeadActivity; followUp: FollowUp | null }
+}
+
+export async function logCommunication(
+  leadId: string,
+  input: LogCommunicationInput,
+): Promise<{ activity: LeadActivity; followUp: FollowUp | null }> {
+  const { data } = await api.post<LogCommunicationResponse>(`/leads/${leadId}/communications`, input)
+  return data.data
 }

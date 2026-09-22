@@ -1,3 +1,4 @@
+import { MessageSquarePlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
@@ -5,9 +6,12 @@ import FollowUpSection from '../../components/followUps/FollowUpSection'
 import DeleteLeadDialog from '../../components/leads/DeleteLeadDialog'
 import LeadActivityList from '../../components/leads/LeadActivityList'
 import LeadStatusControl from '../../components/leads/LeadStatusControl'
+import LogCommunicationDialog from '../../components/leads/LogCommunicationDialog'
 import StatusBadge from '../../components/leads/StatusBadge'
 import * as leadService from '../../services/leadService'
+import type { LogCommunicationInput } from '../../services/leadService'
 import type { Lead } from '../../types/lead'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 interface DetailRowProps {
   label: string
@@ -33,6 +37,8 @@ export default function LeadDetailsPage() {
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showLogCommunication, setShowLogCommunication] = useState(false)
+  const [communicationError, setCommunicationError] = useState<string | null>(null)
   // Bumped whenever a status change or follow-up action happens on this
   // page, so LeadActivityList (which only fetches once per leadId) knows
   // to refetch instead of showing a stale history until the page reloads.
@@ -71,6 +77,18 @@ export default function LeadDetailsPage() {
     }
   }
 
+  const handleLogCommunication = async (values: LogCommunicationInput) => {
+    if (!id) return
+    setCommunicationError(null)
+    try {
+      await leadService.logCommunication(id, values)
+      setShowLogCommunication(false)
+      notifyActivity()
+    } catch (err) {
+      setCommunicationError(getApiErrorMessage(err))
+    }
+  }
+
   if (loadState === 'loading') {
     return <p className="py-12 text-center text-sm text-gray-400">Loading…</p>
   }
@@ -96,7 +114,18 @@ export default function LeadDetailsPage() {
             />
           </div>
         </div>
-        <div className="flex shrink-0 gap-3">
+        <div className="flex shrink-0 flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setCommunicationError(null)
+              setShowLogCommunication(true)
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800"
+          >
+            <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
+            Log Communication
+          </button>
           <Link
             to={`/leads/${lead.id}/edit`}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -133,6 +162,14 @@ export default function LeadDetailsPage() {
           onConfirm={handleDelete}
           onCancel={() => setShowDeleteDialog(false)}
           isDeleting={isDeleting}
+        />
+      )}
+
+      {showLogCommunication && (
+        <LogCommunicationDialog
+          onClose={() => setShowLogCommunication(false)}
+          onSubmit={handleLogCommunication}
+          serverError={communicationError}
         />
       )}
     </div>

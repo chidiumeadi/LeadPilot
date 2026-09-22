@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock, TrendingUp, UserPlus, Users } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, MessageSquare, TrendingUp, UserPlus, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import BreakdownList from './BreakdownList'
@@ -6,6 +6,7 @@ import DateRangeSelector from './DateRangeSelector'
 import LeadTrendChart from './LeadTrendChart'
 import StatCard from './StatCard'
 import StatCardSkeleton from './StatCardSkeleton'
+import { communicationTypeLabels } from '../../config/communication'
 import { leadStatusLabels } from '../../config/leadStatus'
 import * as analyticsService from '../../services/analyticsService'
 import type { AnalyticsRange, DashboardAnalytics } from '../../types/analytics'
@@ -149,6 +150,24 @@ export default function AnalyticsOverview() {
                 <p className="text-xs text-gray-500">Cancelled</p>
                 <p className="mt-1 text-lg font-semibold text-gray-900">{analytics.followUps.cancelled}</p>
               </div>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4">
+            <div className="flex items-center gap-1.5">
+              <MessageSquare className="h-4 w-4 text-gray-400" aria-hidden="true" />
+              <h4 className="text-sm font-medium text-gray-900">Communications</h4>
+              <span className="ml-auto text-sm font-semibold text-gray-900">{analytics.communications.total}</span>
+            </div>
+            <div className="mt-4">
+              <BreakdownList
+                items={analytics.communications.byType.map((c) => ({
+                  key: c.type,
+                  label: communicationTypeLabels[c.type],
+                  count: c.count,
+                }))}
+                emptyLabel="No communications logged in this period yet."
+              />
             </div>
           </div>
         </>
