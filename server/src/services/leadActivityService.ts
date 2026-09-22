@@ -1,19 +1,25 @@
-import type { FollowUpType, LeadActivityType, LeadStatus } from '@prisma/client'
+import type { CommunicationOutcome, CommunicationType, FollowUpType, LeadActivityType, LeadStatus } from '@prisma/client'
 
 import { prisma } from '../config/prisma'
 
 // Centralizes both writing a LeadActivity row and deciding what its
 // `description` sentence says. Every place that creates an activity
-// (leadService, followUpService, publicService, the follow-up notification
-// job) calls logActivity() with a type + a description built by one of the
-// describe* helpers below — so "what does a STATUS_CHANGED activity say"
-// has exactly one answer in the whole codebase, not one per caller.
+// (leadService, followUpService, publicService, communicationService, the
+// follow-up notification job) calls logActivity() with a type + a
+// description built by one of the describe* helpers below — so "what does
+// a STATUS_CHANGED activity say" has exactly one answer in the whole
+// codebase, not one per caller.
 
 export async function logActivity(params: {
   businessId: string
   leadId: string
   type: LeadActivityType
   description: string
+  // Only ever passed for type: 'COMMUNICATION_LOGGED' — every other
+  // caller omits these and Prisma stores them as null.
+  communicationType?: CommunicationType
+  communicationOutcome?: CommunicationOutcome
+  occurredAt?: Date
 }) {
   return prisma.leadActivity.create({ data: params })
 }

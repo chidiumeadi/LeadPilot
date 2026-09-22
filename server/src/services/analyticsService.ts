@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client'
 
 import { prisma } from '../config/prisma'
 import type { AnalyticsRange } from '../validators/analyticsValidators'
+import { COMMUNICATION_TYPES } from '../validators/communicationValidators'
 
 // --- Date semantics (Phase 7) -----------------------------------------
 //
@@ -158,8 +159,18 @@ export async function getDashboardAnalytics(businessId: string, range: Analytics
     createdAt: createdAtFilter,
   }
 
-  const [business, totalLeads, statusGroups, sourceGroups, trendRows, pendingFollowUps, overdueFollowUps, completedFollowUps, cancelledFollowUps] =
-    await Promise.all([
+  const [
+    business,
+    totalLeads,
+    statusGroups,
+    sourceGroups,
+    trendRows,
+    pendingFollowUps,
+    overdueFollowUps,
+    completedFollowUps,
+    cancelledFollowUps,
+    communicationGroups,
+  ] = await Promise.all([
       // Only needed to anchor the "all time" trend's first bucket.
       range === 'all' ? prisma.business.findUniqueOrThrow({ where: { id: businessId }, select: { createdAt: true } }) : null,
       prisma.lead.count({ where: { businessId } }),
@@ -172,6 +183,15 @@ export async function getDashboardAnalytics(businessId: string, range: Analytics
         where: { businessId, status: 'COMPLETED', completedAt: createdAtFilter },
       }),
       prisma.followUp.count({ where: { businessId, status: 'CANCELLED' } }),
+      // Phase 9: communications share the same [start, now] scoping as
+      // leads/completed follow-ups — occurredAt is always set for
+      // COMMUNICATION_LOGGED rows (see communicationService.logCommunication),
+      // so filtering by it here is safe.
+      prisma.leadActivity.groupBy({
+        by: ['communicationType'],
+        where: { businessId, type: 'COMMUNICATION_LOGGED', occurredAt: createdAtFilter },
+        _count: { _all: true },
+      }),
     ])
 
   const statusCounts = new Map(statusGroups.map((g) => [g.status, g._count._all]))
@@ -184,6 +204,20 @@ export async function getDashboardAnalytics(businessId: string, range: Analytics
   const leadsBySource = sourceGroups
     .map((g) => ({ source: g.source, label: formatSourceLabel(g.source), count: g._count._all }))
     .sort((a, b) => b.count - a.count)
+
+  // communicationType is only ever null for activity types other than
+  // COMMUNICATION_LOGGED, and this query already filters to that type —
+  // so every group here genuinely has one, but Prisma's generated type
+  // still marks the column nullable. `?? 0` on the lookup below is what
+  // actually matters for correctness (a type with zero logged this
+  // period); this filter just satisfies the nullable column type.
+  const communicationCounts = new Map(
+    communicationGroups
+      .filter((g) => g.communicationType !== null)
+      .map((g) => [g.communicationType!, g._count._all]),
+  )
+  const communicationsByType = COMMUNICATION_TYPES.map((type) => ({ type, count: communicationCounts.get(type) ?? 0 }))
+  const totalCommunications = communicationsByType.reduce((sum, c) => sum + c.count, 0)
 
   // For "all", anchor the trend to the earliest real data point rather than
   // assuming business.createdAt covers every lead — that assumption always
@@ -217,6 +251,10 @@ export async function getDashboardAnalytics(businessId: string, range: Analytics
       overdue: overdueFollowUps,
       completed: completedFollowUps,
       cancelled: cancelledFollowUps,
+    },
+    communications: {
+      total: totalCommunications,
+      byType: communicationsByType,
     },
   }
 }
