@@ -13,6 +13,11 @@ import { getApiErrorMessage } from '../../utils/apiError'
 
 interface FollowUpSectionProps {
   leadId: string
+  // Called after create/complete/cancel — the three follow-up actions that
+  // also write a LeadActivity row server-side (see followUpService.ts) —
+  // so a sibling LeadActivityList can refetch instead of showing a stale
+  // history until the page is reloaded.
+  onActivity?: () => void
 }
 
 type DialogState = { mode: 'create' } | { mode: 'edit'; followUp: FollowUp } | null
@@ -108,7 +113,7 @@ function FollowUpGroup({ title, items, emphasis, emptyLabel, busyId, onEdit, onC
   )
 }
 
-export default function FollowUpSection({ leadId }: FollowUpSectionProps) {
+export default function FollowUpSection({ leadId, onActivity }: FollowUpSectionProps) {
   const [followUps, setFollowUps] = useState<FollowUp[]>([])
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [dialog, setDialog] = useState<DialogState>(null)
@@ -150,6 +155,7 @@ export default function FollowUpSection({ leadId }: FollowUpSectionProps) {
       await followUpService.createFollowUp({ leadId, ...values })
       setDialog(null)
       await load()
+      onActivity?.()
     } catch (err) {
       setFormError(getApiErrorMessage(err))
     }
@@ -173,6 +179,7 @@ export default function FollowUpSection({ leadId }: FollowUpSectionProps) {
     try {
       await followUpService.completeFollowUp(id)
       await load()
+      onActivity?.()
     } catch (err) {
       setActionError(getApiErrorMessage(err))
     } finally {
@@ -186,6 +193,7 @@ export default function FollowUpSection({ leadId }: FollowUpSectionProps) {
     try {
       await followUpService.cancelFollowUp(id)
       await load()
+      onActivity?.()
     } catch (err) {
       setActionError(getApiErrorMessage(err))
     } finally {

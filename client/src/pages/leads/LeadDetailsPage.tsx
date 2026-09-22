@@ -33,6 +33,11 @@ export default function LeadDetailsPage() {
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  // Bumped whenever a status change or follow-up action happens on this
+  // page, so LeadActivityList (which only fetches once per leadId) knows
+  // to refetch instead of showing a stale history until the page reloads.
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0)
+  const notifyActivity = () => setActivityRefreshKey((key) => key + 1)
 
   useEffect(() => {
     if (!id) return
@@ -84,7 +89,10 @@ export default function LeadDetailsPage() {
             <LeadStatusControl
               leadId={lead.id}
               status={lead.status}
-              onChanged={(status) => setLead((prev) => (prev ? { ...prev, status } : prev))}
+              onChanged={(updatedLead) => {
+                setLead(updatedLead)
+                notifyActivity()
+              }}
             />
           </div>
         </div>
@@ -115,9 +123,9 @@ export default function LeadDetailsPage() {
         {lead.convertedAt && <DetailRow label="Converted" value={new Date(lead.convertedAt).toLocaleString()} />}
       </dl>
 
-      <FollowUpSection leadId={lead.id} />
+      <FollowUpSection leadId={lead.id} onActivity={notifyActivity} />
 
-      <LeadActivityList leadId={lead.id} />
+      <LeadActivityList leadId={lead.id} refreshKey={activityRefreshKey} />
 
       {showDeleteDialog && (
         <DeleteLeadDialog

@@ -3,12 +3,17 @@ import { useState } from 'react'
 import { LEAD_STATUSES, leadStatusLabels } from '../../config/leadStatus'
 import type { LeadStatus } from '../../config/leadStatus'
 import * as leadService from '../../services/leadService'
+import type { Lead } from '../../types/lead'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 interface LeadStatusControlProps {
   leadId: string
   status: LeadStatus
-  onChanged: (status: LeadStatus) => void
+  // Passes the full updated lead (not just the new status) — a status
+  // change to CONVERTED also sets convertedAt server-side, and the caller
+  // needs that too, not just the status, to keep the rest of the page in
+  // sync without a reload.
+  onChanged: (lead: Lead) => void
 }
 
 // A focused "move this lead to the next stage" control — calls the
@@ -26,7 +31,7 @@ export default function LeadStatusControl({ leadId, status, onChanged }: LeadSta
     setIsSaving(true)
     try {
       const updated = await leadService.changeLeadStatus(leadId, nextStatus)
-      onChanged(updated.status)
+      onChanged(updated)
     } catch (err) {
       setErrorMessage(getApiErrorMessage(err, 'Could not change status.'))
     } finally {

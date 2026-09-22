@@ -8,6 +8,13 @@ import { getApiErrorMessage } from '../../utils/apiError'
 
 interface LeadActivityListProps {
   leadId: string
+  // Bumped by the parent (LeadDetailsPage) whenever something that
+  // produces an activity happens elsewhere on the page — a status change,
+  // a follow-up create/complete/cancel. This component only fetches once
+  // per leadId otherwise, so without this signal a genuinely new activity
+  // row exists in the database but never gets refetched into view until
+  // the whole page is reloaded.
+  refreshKey?: number
 }
 
 const ACTIVITY_ICONS: Record<LeadActivityType, LucideIcon> = {
@@ -26,7 +33,7 @@ function formatWhen(iso: string): string {
 // Read-only feed — no create/edit/delete here, so this is simpler than
 // FollowUpSection: just load once and render, same loading/error/empty
 // states as the rest of the app.
-export default function LeadActivityList({ leadId }: LeadActivityListProps) {
+export default function LeadActivityList({ leadId, refreshKey }: LeadActivityListProps) {
   const [activities, setActivities] = useState<LeadActivity[]>([])
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState('')
@@ -46,7 +53,7 @@ export default function LeadActivityList({ leadId }: LeadActivityListProps) {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leadId])
+  }, [leadId, refreshKey])
 
   return (
     <div className="mt-8">
