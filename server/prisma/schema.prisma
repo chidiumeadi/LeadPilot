@@ -9,6 +9,10 @@
 // Phase 8: lead pipeline & conversion (lead_activities, Lead.convertedAt) —
 // a lightweight, append-only history of what happened to a lead, plus the
 // timestamp of when it first reached CONVERTED status.
+// Phase 9: communication logging (LeadActivity.communicationType/
+// communicationOutcome/occurredAt) — reuses lead_activities rather than a
+// parallel history table; no external email/SMS/WhatsApp sending, this
+// only records that a communication happened.
 
 generator client {
   provider = "prisma-client-js"
@@ -188,6 +192,27 @@ enum LeadActivityType {
   FOLLOW_UP_COMPLETED
   FOLLOW_UP_CANCELLED
   FOLLOW_UP_NOTIFICATION_SENT
+  COMMUNICATION_LOGGED
+}
+
+// Distinct from FollowUpType: a FollowUp is a scheduled future action,
+// a CommunicationType records something that already happened. NOTE
+// replaces FollowUpType's OTHER — logging a plain note isn't a channel.
+enum CommunicationType {
+  CALL
+  EMAIL
+  SMS
+  WHATSAPP
+  NOTE
+}
+
+enum CommunicationOutcome {
+  CONNECTED
+  NO_ANSWER
+  INTERESTED
+  NOT_INTERESTED
+  NEEDS_FOLLOW_UP
+  OTHER
 }
 
 // A simple, append-only timeline of what happened to a lead — see
@@ -206,7 +231,21 @@ model LeadActivity {
   leadId      String           @map("lead_id")
   type        LeadActivityType
   description String
-  createdAt   DateTime         @default(now()) @map("created_at")
+
+  // Phase 9: only set when type = COMMUNICATION_LOGGED, left null for
+  // every other activity type. Kept on this same table (not a separate
+  // Communication model) so "communications by type" analytics and the
+  // Activity History feed both read from one place — see the schema-level
+  // comment above and leadActivityService.ts.
+  communicationType    CommunicationType?    @map("communication_type")
+  communicationOutcome CommunicationOutcome? @map("communication_outcome")
+  // When the communication happened, as reported by the user — distinct
+  // from createdAt (when this row was written), the same way FollowUp
+  // separates scheduledAt from createdAt. Only meaningful for
+  // COMMUNICATION_LOGGED; every other activity type just uses createdAt.
+  occurredAt           DateTime?             @map("occurred_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   lead     Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
