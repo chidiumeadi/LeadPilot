@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client'
 
 import { prisma } from '../config/prisma'
 import { AppError } from '../middleware/errorHandler'
+import * as leadActivityService from './leadActivityService'
 import * as leadService from './leadService'
 import type { CreateFollowUpInput, FollowUpListQuery, UpdateFollowUpInput } from '../validators/followUpValidators'
 
@@ -60,7 +61,7 @@ export async function createFollowUp(businessId: string, input: CreateFollowUpIn
   // this is the "Lead.businessId === authenticatedUser.businessId" check.
   await leadService.getLeadById(businessId, input.leadId)
 
-  return prisma.followUp.create({
+  const followUp = await prisma.followUp.create({
     data: {
       businessId,
       leadId: input.leadId,
@@ -71,6 +72,15 @@ export async function createFollowUp(businessId: string, input: CreateFollowUpIn
     },
     include: followUpInclude,
   })
+
+  await leadActivityService.logActivity({
+    businessId,
+    leadId: input.leadId,
+    type: 'FOLLOW_UP_CREATED',
+    description: leadActivityService.describeFollowUpCreated(input.type),
+  })
+
+  return followUp
 }
 
 export async function getFollowUpById(businessId: string, id: string) {
@@ -117,6 +127,13 @@ export async function completeFollowUp(businessId: string, id: string) {
     throw new AppError(INVALID_TRANSITION_MESSAGE, 400)
   }
 
+  await leadActivityService.logActivity({
+    businessId,
+    leadId: followUp.leadId,
+    type: 'FOLLOW_UP_COMPLETED',
+    description: leadActivityService.describeFollowUpCompleted(followUp.type),
+  })
+
   return prisma.followUp.findUniqueOrThrow({ where: { id }, include: followUpInclude })
 }
 
@@ -135,6 +152,13 @@ export async function cancelFollowUp(businessId: string, id: string) {
   if (count === 0) {
     throw new AppError(INVALID_TRANSITION_MESSAGE, 400)
   }
+
+  await leadActivityService.logActivity({
+    businessId,
+    leadId: followUp.leadId,
+    type: 'FOLLOW_UP_CANCELLED',
+    description: leadActivityService.describeFollowUpCancelled(followUp.type),
+  })
 
   return prisma.followUp.findUniqueOrThrow({ where: { id }, include: followUpInclude })
 }

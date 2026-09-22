@@ -49,6 +49,11 @@ export const leadIdParamSchema = z.object({
   id: z.string().uuid('Invalid lead id'),
 })
 
+export const changeLeadStatusSchema = z.object({
+  status: leadStatusEnum,
+})
+
 export type CreateLeadInput = z.infer<typeof createLeadSchema>
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>
 export type LeadListQuery = z.infer<typeof leadListQuerySchema>
+export type ChangeLeadStatusInput = z.infer<typeof changeLeadStatusSchema>

@@ -11,6 +11,8 @@ router.get('/', leadController.listLeads)
 router.post('/', leadController.createLead)
 router.get('/:id', leadController.getLead)
 router.patch('/:id', leadController.updateLead)
+router.patch('/:id/status', leadController.changeLeadStatus)
+router.get('/:id/activities', leadController.listLeadActivities)
 router.delete('/:id', leadController.deleteLead)
 
 export default router

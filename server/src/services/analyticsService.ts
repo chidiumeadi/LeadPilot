@@ -143,10 +143,19 @@ export async function getDashboardAnalytics(businessId: string, range: Analytics
   const now = new Date()
   const { start, bucket } = resolveRange(range, now)
 
-  const createdAtFilter: Prisma.DateTimeFilter | undefined = start ? { gte: start } : undefined
+  // Phase 8 fix (Phase 7 audit finding): always bound the upper edge at
+  // `now`, not just the lower edge at `start`. Without this, a lead whose
+  // createdAt is somehow in the future (only reachable via direct DB
+  // access — the app itself always writes createdAt: now()) would count
+  // toward newLeads/leadsByStatus/leadsBySource but fall outside the
+  // trend's bucket walk (which stops at `now`), making leadTrend's total
+  // silently disagree with newLeads. Bounding every range-scoped query to
+  // the same [start, now] window keeps them mathematically consistent by
+  // construction, for any data, not just well-formed data.
+  const createdAtFilter: Prisma.DateTimeFilter = start ? { gte: start, lte: now } : { lte: now }
   const rangeWhere: Prisma.LeadWhereInput = {
     businessId,
-    ...(createdAtFilter && { createdAt: createdAtFilter }),
+    createdAt: createdAtFilter,
   }
 
   const [business, totalLeads, statusGroups, sourceGroups, trendRows, pendingFollowUps, overdueFollowUps, completedFollowUps, cancelledFollowUps] =
@@ -160,11 +169,7 @@ export async function getDashboardAnalytics(businessId: string, range: Analytics
       prisma.followUp.count({ where: { businessId, status: 'PENDING' } }),
       prisma.followUp.count({ where: { businessId, status: 'PENDING', scheduledAt: { lt: now } } }),
       prisma.followUp.count({
-        where: {
-          businessId,
-          status: 'COMPLETED',
-          ...(createdAtFilter && { completedAt: createdAtFilter }),
-        },
+        where: { businessId, status: 'COMPLETED', completedAt: createdAtFilter },
       }),
       prisma.followUp.count({ where: { businessId, status: 'CANCELLED' } }),
     ])

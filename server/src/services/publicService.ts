@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client'
 
 import { prisma } from '../config/prisma'
 import { AppError } from '../middleware/errorHandler'
+import * as leadActivityService from './leadActivityService'
 import type { CreatePublicLeadInput } from '../validators/publicValidators'
 
 // Public submissions always get this fixed source and status — never
@@ -42,7 +43,7 @@ export async function createPublicLead(slug: string, input: CreatePublicLeadInpu
     throw new AppError(NOT_FOUND_MESSAGE, 404)
   }
 
-  await prisma.lead.create({
+  const lead = await prisma.lead.create({
     data: {
       businessId: business.id,
       name: input.name,
@@ -52,5 +53,12 @@ export async function createPublicLead(slug: string, input: CreatePublicLeadInpu
       source: PUBLIC_FORM_SOURCE,
       status: 'NEW',
     },
+  })
+
+  await leadActivityService.logActivity({
+    businessId: business.id,
+    leadId: lead.id,
+    type: 'LEAD_CREATED',
+    description: leadActivityService.describeLeadCreated(PUBLIC_FORM_SOURCE),
   })
 }

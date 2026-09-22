@@ -1,6 +1,7 @@
 import type { FollowUpType } from '@prisma/client'
 
 import { prisma } from '../config/prisma'
+import * as leadActivityService from '../services/leadActivityService'
 
 // Kept free of any Express/timer concerns so it's directly callable from
 // the scheduler (jobs/scheduler.ts) AND from a manual/test script — see
@@ -80,6 +81,18 @@ export async function processDueFollowUps(): Promise<ProcessDueFollowUpsResult> 
       })
 
       created += result.count
+
+      // skipDuplicates can make result.count 0 if another overlapping run
+      // already created this notification — only log an activity for the
+      // notification this call actually created, never a duplicate entry.
+      if (result.count > 0) {
+        await leadActivityService.logActivity({
+          businessId: followUp.businessId,
+          leadId: followUp.lead.id,
+          type: 'FOLLOW_UP_NOTIFICATION_SENT',
+          description: leadActivityService.describeFollowUpNotificationSent(followUp.type),
+        })
+      }
     } catch (err) {
       failed += 1
       // eslint-disable-next-line no-console
