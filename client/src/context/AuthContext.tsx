@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react'
 
 import * as authService from '../services/authService'
-import type { AuthUser } from '../types/auth'
+import type { AuthUser, Business } from '../types/auth'
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 
@@ -12,6 +12,12 @@ interface AuthContextValue {
   register: (payload: authService.RegisterPayload) => Promise<void>
   login: (payload: authService.LoginPayload) => Promise<void>
   logout: () => Promise<void>
+  // Settings pushes fresh data back in after a save so the rest of the app
+  // (Header's name/business display, notification preferences) doesn't go
+  // stale until a full page reload — same pattern Phase 8 used for
+  // LeadDetailsPage after a status change.
+  updateUser: (user: AuthUser) => void
+  updateBusiness: (business: Business) => void
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -67,9 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const updateUser = useCallback((updated: AuthUser) => {
+    setUser(updated)
+  }, [])
+
+  const updateBusiness = useCallback((business: Business) => {
+    setUser((prev) => (prev ? { ...prev, business } : prev))
+  }, [])
+
   const value = useMemo(
-    () => ({ user, status, register, login, logout }),
-    [user, status, register, login, logout],
+    () => ({ user, status, register, login, logout, updateUser, updateBusiness }),
+    [user, status, register, login, logout, updateUser, updateBusiness],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

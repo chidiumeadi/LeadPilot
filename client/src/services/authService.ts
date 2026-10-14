@@ -51,3 +51,20 @@ export async function resetPasswordRequest(token: string, password: string): Pro
   const { data } = await api.post<MessageResponse>('/auth/reset-password', { token, password })
   return data.message
 }
+
+export interface UpdateAccountPayload {
+  name?: string
+  email?: string
+  inAppNotificationsEnabled?: boolean
+  browserNotificationsEnabled?: boolean
+}
+
+export async function updateAccountRequest(payload: UpdateAccountPayload): Promise<AuthUser> {
+  const { data } = await api.patch<UserResponse>('/auth/me', payload)
+  return data.data.user
+}
+
+export async function changePasswordRequest(currentPassword: string, newPassword: string): Promise<string> {
+  const { data } = await api.post<MessageResponse>('/auth/change-password', { currentPassword, newPassword })
+  return data.message
+}

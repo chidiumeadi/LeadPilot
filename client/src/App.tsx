@@ -1,4 +1,4 @@
-import { Calendar, Settings } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import AuthenticatedLayout from './components/dashboard/AuthenticatedLayout'
@@ -18,12 +18,14 @@ import PlaceholderPage from './pages/PlaceholderPage'
 import PublicLeadCapturePage from './pages/public/PublicLeadCapturePage'
 import RegisterPage from './pages/RegisterPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import SettingsPage from './pages/SettingsPage'
 
 // Phase 2 established the dashboard shell (layout, navigation, placeholders).
 // Phase 3 added real Lead Management under /leads.
 // Phase 4 adds the public, unauthenticated lead-capture page at /lead/:businessSlug.
 // Phase 5 added the Follow-Up System (embedded in LeadDetailsPage).
 // Phase 6 adds real Notifications.
+// Phase 10 adds real Settings (business/account profile, password, notification prefs).
 function App() {
   return (
     <BrowserRouter>
@@ -59,16 +61,7 @@ function App() {
                   }
                 />
                 <Route path="/notifications" element={<NotificationsPage />} />
-                <Route
-                  path="/settings"
-                  element={
-                    <PlaceholderPage
-                      title="Settings"
-                      description="Settings will be available in a later phase."
-                      icon={Settings}
-                    />
-                  }
-                />
+                <Route path="/settings" element={<SettingsPage />} />
               </Route>
             </Route>
 
