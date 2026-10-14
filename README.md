@@ -5,14 +5,13 @@ and follow up on leads coming from channels like WhatsApp, Instagram,
 Facebook, phone calls, referrals, and their website — so no potential
 customer gets forgotten.
 
-> **Status:** Phase 9 — Communication & Follow-Up Automation. A business
-> can log that a communication happened with a lead (call/email/SMS/
-> WhatsApp/note, with an optional outcome), optionally creating a
-> follow-up in the same step, all recorded in the same activity history
-> Phase 8 introduced. This is an internal record-keeping workflow only —
-> no email/SMS/WhatsApp is actually sent; that remains a later phase.
-> Settings, billing, and advanced reporting are implemented in later
-> development phases.
+> **Status:** Phase 10 — Settings. The Settings page is fully functional:
+> business profile (name/category/phone/location/logo URL), account
+> profile (name/email), password change, and two notification
+> preferences (in-app badge, browser notifications) all load real data,
+> save to the database, and survive a refresh. Theme switching is
+> intentionally not implemented — see "Settings" below for why. Billing
+> and advanced reporting remain later development phases.
 
 ## Tech Stack
 
@@ -131,10 +130,12 @@ up in Lead Management with source `PUBLIC_FORM`.
 | POST   | `/api/auth/login`         | No             | Log in with email + password           |
 | POST   | `/api/auth/logout`        | No             | Clear the auth cookie                  |
 | GET    | `/api/auth/me`             | Yes            | Return the current authenticated user  |
+| PATCH  | `/api/auth/me`             | Yes            | Update name/email/notification preferences |
 | POST   | `/api/auth/forgot-password`| No             | Request a password-reset email/link    |
 | POST   | `/api/auth/reset-password` | No             | Reset password with a valid token      |
+| POST   | `/api/auth/change-password`| Yes            | Change password (verifies the current one first) |
 | GET    | `/api/business`            | Yes            | Get the authenticated user's business  |
-| PATCH  | `/api/business`            | Yes            | Update the authenticated user's business|
+| PATCH  | `/api/business`            | Yes            | Update the authenticated user's business (name/category/phone/location/logoUrl — not slug) |
 | GET    | `/api/leads`                | Yes            | List the business's leads (pagination, search, status filter) |
 | POST   | `/api/leads`                | Yes            | Create a lead (source is always `MANUAL` here) |
 | GET    | `/api/leads/:id`            | Yes            | Get one lead (404 if it belongs to another business) |
@@ -274,6 +275,31 @@ constraint (`@@unique([followUpId, type])`) plus `skipDuplicates` so
 concurrent or repeated runs can never create a duplicate. The job
 never sends a real email/SMS/WhatsApp and never changes a follow-up's
 status — actually executing a follow-up that way is a later phase.
+
+### Settings (Phase 10)
+
+- **Business slug is read-only.** The public capture page is shown and
+  copyable, but editing the slug isn't implemented — changing it could
+  break links a business has already shared, and the spec's own wording
+  only asked for it conditionally.
+- **No email verification exists anywhere in this app** (not even at
+  registration), so changing your account email in Settings follows that
+  same no-verification design rather than inventing a stricter flow
+  nothing else in the app has.
+- **Notification preferences are display-side only.** `inAppNotificationsEnabled`
+  gates the Header bell's badge/polling (`NotificationContext`); it does
+  not touch `/notifications` itself or the Phase 6 scheduler, which keeps
+  creating `FOLLOW_UP_DUE` reminders regardless. `browserNotificationsEnabled`
+  fires a real `Notification` API popup, gated by actual browser
+  permission — it's never reported as "on" if the browser didn't actually
+  grant permission.
+- **No "Follow-up reminders" toggle.** The app currently has exactly one
+  notification type (`FOLLOW_UP_DUE`), so a separate toggle for it would
+  be functionally identical to "in-app notifications" — i.e. fake.
+- **No theme/appearance switching.** No `dark:` Tailwind variants exist
+  anywhere in this codebase; retrofitting real theme support would touch
+  every existing component. Settings documents this as a follow-up
+  instead of shipping a toggle that does nothing.
 
 ## Environment Variables
 
