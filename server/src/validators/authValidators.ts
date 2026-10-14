@@ -27,7 +27,33 @@ export const resetPasswordSchema = z.object({
   password,
 })
 
+// Settings — Account Profile + Notification Preferences. All optional so
+// the same endpoint can save just a name change, just a preference toggle,
+// or both — confirmPassword-style matching isn't relevant here since
+// there's no password field on this schema.
+export const updateAccountSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Name is required').max(200).optional(),
+    email,
+    inAppNotificationsEnabled: z.boolean().optional(),
+    browserNotificationsEnabled: z.boolean().optional(),
+  })
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field is required',
+  })
+
+// Settings — Security. confirmPassword is intentionally not part of this
+// schema: it's validated client-side only (same pattern as
+// ResetPasswordPage), since the server only ever needs the one new value.
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: password,
+})
+
 export type RegisterInput = z.infer<typeof registerSchema>
 export type LoginInput = z.infer<typeof loginSchema>
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
+export type UpdateAccountInput = z.infer<typeof updateAccountSchema>
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>

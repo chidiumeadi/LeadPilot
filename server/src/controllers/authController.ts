@@ -4,10 +4,12 @@ import { AUTH_COOKIE_NAME, authCookieOptions } from '../config/cookies'
 import * as authService from '../services/authService'
 import { validateBody } from '../utils/validate'
 import {
+  changePasswordSchema,
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
   resetPasswordSchema,
+  updateAccountSchema,
 } from '../validators/authValidators'
 
 export async function register(req: Request, res: Response) {
@@ -51,4 +53,16 @@ export async function resetPassword(req: Request, res: Response) {
   await authService.resetPassword(input)
 
   res.status(200).json({ success: true, message: 'Password has been reset. You can now log in.' })
+}
+
+export async function updateAccount(req: Request, res: Response) {
+  const input = validateBody(updateAccountSchema, req.body)
+  const user = await authService.updateAccount(req.userId!, input)
+  res.status(200).json({ success: true, data: { user } })
+}
+
+export async function changePassword(req: Request, res: Response) {
+  const input = validateBody(changePasswordSchema, req.body)
+  await authService.changePassword(req.userId!, input)
+  res.status(200).json({ success: true, message: 'Password changed successfully.' })
 }

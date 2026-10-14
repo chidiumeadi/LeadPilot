@@ -3,7 +3,14 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../config/prisma'
 import { env } from '../config/env'
 import { AppError } from '../middleware/errorHandler'
-import type { ForgotPasswordInput, LoginInput, RegisterInput, ResetPasswordInput } from '../validators/authValidators'
+import type {
+  ChangePasswordInput,
+  ForgotPasswordInput,
+  LoginInput,
+  RegisterInput,
+  ResetPasswordInput,
+  UpdateAccountInput,
+} from '../validators/authValidators'
 import { businessPublicSelect, generateUniqueSlug } from './businessService'
 import { generateResetToken, hashResetToken, signAccessToken } from './tokenService'
 
@@ -14,6 +21,8 @@ export const userPublicSelect = {
   id: true,
   name: true,
   email: true,
+  inAppNotificationsEnabled: true,
+  browserNotificationsEnabled: true,
   business: { select: businessPublicSelect },
 } as const
 
@@ -144,4 +153,50 @@ export async function resetPassword(input: ResetPasswordInput) {
       data: { usedAt: new Date() },
     }),
   ])
+}
+
+// Settings — Account Profile + Notification Preferences. Partial update:
+// only the fields the client actually sent are touched.
+export async function updateAccount(userId: string, input: UpdateAccountInput) {
+  if (input.email) {
+    const existing = await prisma.user.findUnique({ where: { email: input.email }, select: { id: true } })
+    if (existing && existing.id !== userId) {
+      throw new AppError('An account with this email already exists', 409)
+    }
+  }
+
+  const { count } = await prisma.user.updateMany({
+    where: { id: userId },
+    data: input,
+  })
+
+  if (count === 0) {
+    throw new AppError('Unauthorized', 401)
+  }
+
+  return prisma.user.findUniqueOrThrow({ where: { id: userId }, select: userPublicSelect })
+}
+
+// Settings — Security. Verifies the current password server-side before
+// accepting a new one — never trusts a client claim that it already
+// checked. Reuses the exact same hashing routine as register/reset so
+// there is only one place that decides how passwords are stored.
+export async function changePassword(userId: string, input: ChangePasswordInput) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } })
+
+  if (!user) {
+    throw new AppError('Unauthorized', 401)
+  }
+
+  const currentPasswordMatches = await bcrypt.compare(input.currentPassword, user.passwordHash)
+  if (!currentPasswordMatches) {
+    throw new AppError('Current password is incorrect', 400)
+  }
+
+  const passwordHash = await bcrypt.hash(input.newPassword, BCRYPT_SALT_ROUNDS)
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  })
 }

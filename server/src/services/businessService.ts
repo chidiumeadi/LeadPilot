@@ -63,7 +63,13 @@ export async function getBusinessForUser(userId: string) {
 
 export async function updateBusinessForUser(
   userId: string,
-  data: { name?: string; category?: string | null; phone?: string | null; location?: string | null },
+  data: {
+    name?: string
+    category?: string | null
+    phone?: string | null
+    location?: string | null
+    logoUrl?: string | null
+  },
 ) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

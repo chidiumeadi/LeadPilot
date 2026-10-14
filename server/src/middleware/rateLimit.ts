@@ -33,6 +33,10 @@ export const forgotPasswordRateLimiter = makeLimiter(5)
 // 10 attempts / 15 min per IP.
 export const resetPasswordRateLimiter = makeLimiter(10)
 
+// 10 attempts / 15 min per IP — authenticated, but still a sensitive
+// action worth bounding against brute-forcing the current password.
+export const changePasswordRateLimiter = makeLimiter(10)
+
 // 5 submissions / 15 min per IP — this endpoint is unauthenticated and
 // public, so it's the most exposed target for spam/abuse in the app.
 export const publicLeadRateLimiter = makeLimiter(5)
