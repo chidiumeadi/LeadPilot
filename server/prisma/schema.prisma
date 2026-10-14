@@ -13,6 +13,10 @@
 // communicationOutcome/occurredAt) — reuses lead_activities rather than a
 // parallel history table; no external email/SMS/WhatsApp sending, this
 // only records that a communication happened.
+// Phase 10: Settings — User.inAppNotificationsEnabled/
+// browserNotificationsEnabled are display-side preferences only; they
+// never gate the Phase 6 scheduler. Business.logoUrl already existed
+// (Phase 1) and is now actually editable via the Settings UI.
 
 generator client {
   provider = "prisma-client-js"
@@ -43,13 +47,22 @@ model Business {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  businessId   String   @map("business_id")
-  name         String
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                          String   @id @default(uuid())
+  businessId                  String   @map("business_id")
+  name                        String
+  email                       String   @unique
+  passwordHash                String   @map("password_hash")
+  // Phase 10 (Settings): display-side notification preferences only. Never
+  // gates whether the Phase 6 scheduler creates FollowUp reminders — see
+  // notificationService/jobs, which are unaffected by these columns.
+  // inApp controls the Header bell's badge/polling; browser controls
+  // whether a real Notification API popup fires. Both default to the
+  // behavior the app already had before these existed (in-app always on,
+  // browser off until the user opts in and grants permission).
+  inAppNotificationsEnabled   Boolean  @default(true) @map("in_app_notifications_enabled")
+  browserNotificationsEnabled Boolean  @default(false) @map("browser_notifications_enabled")
+  createdAt                   DateTime @default(now()) @map("created_at")
+  updatedAt                   DateTime @updatedAt @map("updated_at")
 
   business            Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
   passwordResetTokens PasswordResetToken[]
