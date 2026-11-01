@@ -34,11 +34,16 @@ export async function listFollowUps(businessId: string, query: FollowUpListQuery
     where.status = status
   }
 
+  // A completed list reads as history (most recently completed first);
+  // every other view is a to-do list, soonest/most overdue first.
+  const orderBy: Prisma.FollowUpOrderByWithRelationInput =
+    !when && status === 'COMPLETED' ? { completedAt: 'desc' } : { scheduledAt: 'asc' }
+
   const [items, total] = await Promise.all([
     prisma.followUp.findMany({
       where,
       include: followUpInclude,
-      orderBy: { scheduledAt: 'asc' },
+      orderBy,
       skip: (page - 1) * limit,
       take: limit,
     }),
@@ -96,20 +101,46 @@ export async function getFollowUpById(businessId: string, id: string) {
   return followUp
 }
 
-export async function updateFollowUp(businessId: string, id: string, input: UpdateFollowUpInput) {
-  const { count } = await prisma.followUp.updateMany({
-    where: { id, businessId },
-    data: input,
-  })
+const INVALID_TRANSITION_MESSAGE = 'Only pending follow-ups can be updated this way'
 
-  if (count === 0) {
-    throw new AppError('Follow-up not found', 404)
+export async function updateFollowUp(businessId: string, id: string, input: UpdateFollowUpInput) {
+  // Same guard as complete/cancel: a completed or cancelled follow-up is
+  // history, not something that can be quietly rescheduled or rewritten.
+  const followUp = await getFollowUpById(businessId, id)
+
+  if (followUp.status !== 'PENDING') {
+    throw new AppError(INVALID_TRANSITION_MESSAGE, 400)
   }
+
+  const isRescheduled =
+    input.scheduledAt !== undefined && input.scheduledAt.getTime() !== followUp.scheduledAt.getTime()
+
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.followUp.updateMany({
+      where: { id, businessId, status: 'PENDING' },
+      data: input,
+    })
+
+    if (count === 0) {
+      throw new AppError(INVALID_TRANSITION_MESSAGE, 400)
+    }
+
+    // The scheduler only notifies follow-ups with no FOLLOW_UP_DUE
+    // notification attached (see followUpNotificationJob). Detaching the
+    // previous one — rather than deleting it — keeps it in the owner's
+    // inbox (it still carries leadId) while letting the new time produce
+    // its own reminder. The (followUpId, type) unique constraint ignores
+    // NULLs, so detached rows never block the next notification.
+    if (isRescheduled) {
+      await tx.notification.updateMany({
+        where: { businessId, followUpId: id, type: 'FOLLOW_UP_DUE' },
+        data: { followUpId: null },
+      })
+    }
+  })
 
   return prisma.followUp.findUniqueOrThrow({ where: { id }, include: followUpInclude })
 }
-
-const INVALID_TRANSITION_MESSAGE = 'Only pending follow-ups can be updated this way'
 
 export async function completeFollowUp(businessId: string, id: string) {
   const followUp = await getFollowUpById(businessId, id)
