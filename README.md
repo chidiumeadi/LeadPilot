@@ -5,13 +5,15 @@ and follow up on leads coming from channels like WhatsApp, Instagram,
 Facebook, phone calls, referrals, and their website — so no potential
 customer gets forgotten.
 
-> **Status:** Phase 10 — Settings. The Settings page is fully functional:
-> business profile (name/category/phone/location/logo URL), account
-> profile (name/email), password change, and two notification
-> preferences (in-app badge, browser notifications) all load real data,
-> save to the database, and survive a refresh. Theme switching is
-> intentionally not implemented — see "Settings" below for why. Billing
-> and advanced reporting remain later development phases.
+> **Status:** Phase 11a — Follow-ups page. The sidebar's Follow-ups item
+> now opens a real page listing every follow-up across all leads
+> (Upcoming / Overdue / Completed), with reschedule, complete and cancel
+> actions. Two follow-up bugs are fixed: a rescheduled follow-up now gets
+> a fresh due reminder at its new time, and completed or cancelled
+> follow-ups can no longer be edited. No navigation item leads to a
+> placeholder any more. Phase 11b (test framework, session-expiry
+> handling, security hardening) is next; billing and advanced reporting
+> remain later development phases.
 
 ## Tech Stack
 
@@ -146,10 +148,10 @@ up in Lead Management with source `PUBLIC_FORM`.
 | DELETE | `/api/leads/:id`            | Yes            | Delete a lead |
 | GET    | `/api/public/business/:businessSlug` | No   | Public-safe business info (name, slug) for the lead-capture page |
 | POST   | `/api/public/leads/:businessSlug`    | No   | Anonymous lead submission (source is always `PUBLIC_FORM`) |
-| GET    | `/api/follow-ups`           | Yes            | List the business's follow-ups (filter by `leadId`, `status`, or `when=upcoming\|overdue`) |
+| GET    | `/api/follow-ups`           | Yes            | List the business's follow-ups (filter by `leadId`, `status`, or `when=upcoming\|overdue`; `status=COMPLETED` is ordered most recently completed first) |
 | POST   | `/api/follow-ups`           | Yes            | Create a follow-up for one of the business's own leads (always starts `PENDING`) |
 | GET    | `/api/follow-ups/:id`       | Yes            | Get one follow-up |
-| PATCH  | `/api/follow-ups/:id`       | Yes            | Update type/scheduledAt/notes (status can't be changed this way) |
+| PATCH  | `/api/follow-ups/:id`       | Yes            | Update type/scheduledAt/notes of a **pending** follow-up (400 if completed/cancelled; status can't be changed this way) |
 | POST   | `/api/follow-ups/:id/complete` | Yes         | Mark a pending follow-up completed (server sets `completedAt`) |
 | POST   | `/api/follow-ups/:id/cancel`   | Yes         | Mark a pending follow-up cancelled |
 | DELETE | `/api/follow-ups/:id`       | Yes            | Delete a follow-up |
@@ -269,7 +271,8 @@ Follow-ups are records only — creating one with a future `scheduledAt`
 does not send anything by itself. What Phase 6 adds is a background
 job (`server/src/jobs/`) that, on an interval (`FOLLOW_UP_JOB_INTERVAL_MS`,
 default 60s), finds `PENDING` follow-ups whose `scheduledAt` has
-passed and haven't already been notified, and creates one
+passed and haven't already been notified for their current time
+(rescheduling re-arms this — see Phase 11a below), and creates one
 `FOLLOW_UP_DUE` notification each — using a database-level unique
 constraint (`@@unique([followUpId, type])`) plus `skipDuplicates` so
 concurrent or repeated runs can never create a duplicate. The job
@@ -300,6 +303,50 @@ status — actually executing a follow-up that way is a later phase.
   anywhere in this codebase; retrofitting real theme support would touch
   every existing component. Settings documents this as a follow-up
   instead of shipping a toggle that does nothing.
+
+### Follow-ups page (Phase 11a)
+
+`/follow-ups` lists every follow-up for the business, across all leads,
+in three views built on the existing `GET /api/follow-ups` filters — no
+new endpoint:
+
+- **Upcoming** (`when=upcoming`) and **Overdue** (`when=overdue`) —
+  pending follow-ups, soonest/most overdue first, with Edit (reschedule),
+  Mark complete and Cancel.
+- **Completed** (`status=COMPLETED`) — most recently completed first,
+  read-only.
+
+Each item shows its lead's name and links to that lead's page. The view
+and page number live in the URL, so a refresh or going back from a lead
+returns to the same list. Cancelled follow-ups have no view here; they
+stay visible in each lead's follow-up history. The card markup is shared
+with the lead details page (`components/followUps/FollowUpItem.tsx`).
+
+Two behaviour changes in `followUpService.updateFollowUp`:
+
+- **Completed and cancelled follow-ups are locked.** Editing one returns
+  400, the same guard complete/cancel already had (404 still wins for
+  another business's follow-up).
+- **Rescheduling re-arms the reminder.** The scheduler only notifies
+  follow-ups with no `FOLLOW_UP_DUE` notification attached, so before
+  this fix a follow-up that had already reminded once never reminded
+  again after being moved. Now, when `scheduledAt` actually changes, the
+  previous notification is detached (`followUpId` set to null, in the
+  same transaction) rather than deleted — it stays in the inbox and
+  still links to the lead — and the scheduler creates a fresh reminder
+  once the new time arrives. Editing only notes/type, or re-saving the
+  same time, does not trigger another reminder.
+
+Verify with (from `server/`, dev database running):
+
+```bash
+npx ts-node scripts/verify-follow-ups.ts
+```
+
+It creates throwaway businesses, checks the three views, the edit lock,
+tenant isolation and the re-notification behaviour, then deletes its
+data. It runs the real scheduler job, so it also notifies any other due
+follow-ups already in the dev database, exactly as the dev server would.
 
 ## Environment Variables
 
