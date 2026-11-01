@@ -1,4 +1,3 @@
-import { Calendar } from 'lucide-react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import AuthenticatedLayout from './components/dashboard/AuthenticatedLayout'
@@ -7,6 +6,7 @@ import PublicOnlyRoute from './components/PublicOnlyRoute'
 import { AuthProvider } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
 import DashboardPage from './pages/DashboardPage'
+import FollowUpsPage from './pages/FollowUpsPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import EditLeadPage from './pages/leads/EditLeadPage'
 import LeadDetailsPage from './pages/leads/LeadDetailsPage'
@@ -14,7 +14,6 @@ import LeadsListPage from './pages/leads/LeadsListPage'
 import NewLeadPage from './pages/leads/NewLeadPage'
 import LoginPage from './pages/LoginPage'
 import NotificationsPage from './pages/NotificationsPage'
-import PlaceholderPage from './pages/PlaceholderPage'
 import PublicLeadCapturePage from './pages/public/PublicLeadCapturePage'
 import RegisterPage from './pages/RegisterPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
@@ -26,6 +25,7 @@ import SettingsPage from './pages/SettingsPage'
 // Phase 5 added the Follow-Up System (embedded in LeadDetailsPage).
 // Phase 6 adds real Notifications.
 // Phase 10 adds real Settings (business/account profile, password, notification prefs).
+// Phase 11a replaces the last placeholder with a standalone Follow-ups page.
 function App() {
   return (
     <BrowserRouter>
@@ -50,16 +50,7 @@ function App() {
                 <Route path="/leads/new" element={<NewLeadPage />} />
                 <Route path="/leads/:id" element={<LeadDetailsPage />} />
                 <Route path="/leads/:id/edit" element={<EditLeadPage />} />
-                <Route
-                  path="/follow-ups"
-                  element={
-                    <PlaceholderPage
-                      title="Follow-ups"
-                      description="Follow-up automation will be available in a later phase."
-                      icon={Calendar}
-                    />
-                  }
-                />
+                <Route path="/follow-ups" element={<FollowUpsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>

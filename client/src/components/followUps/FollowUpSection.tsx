@@ -5,8 +5,7 @@ import EmptyState from '../dashboard/EmptyState'
 import DeleteFollowUpDialog from './DeleteFollowUpDialog'
 import FollowUpFormDialog from './FollowUpFormDialog'
 import type { FollowUpSubmitValues } from './FollowUpForm'
-import FollowUpStatusBadge from './FollowUpStatusBadge'
-import { followUpTypeLabels } from '../../config/followUp'
+import FollowUpItem from './FollowUpItem'
 import * as followUpService from '../../services/followUpService'
 import type { FollowUp } from '../../types/followUp'
 import { getApiErrorMessage } from '../../utils/apiError'
@@ -21,10 +20,6 @@ interface FollowUpSectionProps {
 }
 
 type DialogState = { mode: 'create' } | { mode: 'edit'; followUp: FollowUp } | null
-
-function formatScheduled(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-}
 
 interface FollowUpGroupProps {
   title: string
@@ -54,58 +49,16 @@ function FollowUpGroup({ title, items, emphasis, emptyLabel, busyId, onEdit, onC
       {items.length > 0 && (
         <ul className="mt-2 space-y-2">
           {items.map((followUp) => (
-            <li
+            <FollowUpItem
               key={followUp.id}
-              className={`rounded-lg border p-3 ${emphasis === 'overdue' ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {followUpTypeLabels[followUp.type]} — {formatScheduled(followUp.scheduledAt)}
-                  </p>
-                  {followUp.notes && (
-                    <p className="mt-1 text-sm whitespace-pre-wrap text-gray-500">{followUp.notes}</p>
-                  )}
-                </div>
-                <FollowUpStatusBadge status={followUp.status} />
-              </div>
-
-              <div className="mt-2 flex flex-wrap gap-4 text-sm">
-                {onEdit && (
-                  <button
-                    type="button"
-                    onClick={() => onEdit(followUp)}
-                    disabled={busyId === followUp.id}
-                    className="font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50"
-                  >
-                    Edit
-                  </button>
-                )}
-                {onComplete && (
-                  <button
-                    type="button"
-                    onClick={() => onComplete(followUp.id)}
-                    disabled={busyId === followUp.id}
-                    className="font-medium text-green-700 hover:text-green-800 disabled:opacity-50"
-                  >
-                    Mark complete
-                  </button>
-                )}
-                {onCancel && (
-                  <button
-                    type="button"
-                    onClick={() => onCancel(followUp.id)}
-                    disabled={busyId === followUp.id}
-                    className="font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                )}
-                <button type="button" onClick={() => onDelete(followUp)} className="font-medium text-red-600 hover:text-red-700">
-                  Delete
-                </button>
-              </div>
-            </li>
+              followUp={followUp}
+              emphasis={emphasis}
+              busy={busyId === followUp.id}
+              onEdit={onEdit}
+              onComplete={onComplete}
+              onCancel={onCancel}
+              onDelete={onDelete}
+            />
           ))}
         </ul>
       )}
