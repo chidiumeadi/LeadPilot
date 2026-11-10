@@ -366,9 +366,43 @@ follow-ups already in the dev database, exactly as the dev server would.
 | `SERVER_URL`   | Backend's own public URL               |
 | `PORT`         | Port the Express server listens on (defaults to `5000`) |
 | `FOLLOW_UP_JOB_INTERVAL_MS` | How often the follow-up notification job runs, in ms (defaults to `60000`) |
+| `TRUST_PROXY`  | Number of reverse-proxy hops in front of the API (e.g. `1` on Render). Unset locally. Only a whole number is accepted |
+| `CLIENT_DIST_DIR` | Path to the built client (`client/dist`). When set, the API also serves the frontend from the same URL. Unset locally |
+
+`CLIENT_URL` and `SERVER_URL` fall back to `RENDER_EXTERNAL_URL` when
+running on Render, so a single-service deploy doesn't need them set.
 
 Never commit real values — only `.env.example` files (with variable
 names but no secrets) are tracked in Git.
+
+## Deploying a demo to Render
+
+`render.yaml` describes a **private demo** deployment: one Render web
+service that serves both the API and the built React app from the same
+URL (so the login cookie and CORS need no cross-site setup), plus a
+managed PostgreSQL database.
+
+1. Sign up at render.com with GitHub and give Render access to this
+   repository.
+2. **New → Blueprint**, choose the repository, review and **Apply**.
+   Render creates the database, generates `JWT_SECRET`, wires
+   `DATABASE_URL`, builds the client and server, runs
+   `prisma migrate deploy` (applies pending migrations only, never resets
+   data) and starts the API.
+3. Open the URL Render shows (`https://<name>.onrender.com`).
+
+Every push to `main` redeploys. Known limits of this demo setup:
+
+- **Use test data only.** Phase 11b security fixes (session revocation,
+  email-change protection, error logging, security headers) are not done
+  yet.
+- **Forgot-password does not work**: no email is sent until Phase 13, and
+  the reset link is only logged outside production.
+- **Free plan**: the service sleeps after a period of inactivity (the
+  first request then takes up to about a minute), follow-up reminders
+  only run while it's awake, and free databases expire — check Render's
+  current limits.
+- Errors are not logged in production yet (planned in Phase 11b M3).
 
 ## Development Philosophy
 
