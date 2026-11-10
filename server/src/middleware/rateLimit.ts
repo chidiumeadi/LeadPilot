@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit'
+import rateLimit, { MemoryStore } from 'express-rate-limit'
 
 // Rate limits for authentication endpoints. Windows/limits are deliberately
 // generous enough not to get in the way of normal local development and
@@ -10,14 +10,30 @@ const rateLimitedResponse = {
   message: 'Too many requests. Please try again later.',
 }
 
+// Each limiter gets its own explicit in-memory store (same behaviour as the
+// library default) so the counters can be cleared — see resetRateLimiters.
+const stores: MemoryStore[] = []
+
 function makeLimiter(max: number) {
+  const store = new MemoryStore()
+  stores.push(store)
+
   return rateLimit({
     windowMs: FIFTEEN_MINUTES_MS,
     max,
     standardHeaders: true,
     legacyHeaders: false,
     message: rateLimitedResponse,
+    store,
   })
+}
+
+// Test-only: the limiters are module-level, so every test file shares
+// their counters. The test setup calls this between tests so one test's
+// logins/registrations can't push the next one over a limit. Never called
+// from application code.
+export async function resetRateLimiters(): Promise<void> {
+  await Promise.all(stores.map((store) => store.resetAll()))
 }
 
 // 20 attempts / 15 min per IP.
